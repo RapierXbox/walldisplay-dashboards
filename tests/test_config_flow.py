@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from unittest.mock import patch
@@ -10,20 +11,23 @@ from unittest.mock import patch
 import pytest
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.walldisplay_dashboards.const import (
     CONF_AREA_ID,
+    CONF_CLIMATE_ENTITIES,
     CONF_DISPLAY_DEVICE_ID,
     CONF_DISPLAY_HOST,
     CONF_HEIGHT,
     CONF_HIDDEN,
+    CONF_HUMIDITY_ENTITY,
     CONF_IDLE_SECONDS,
+    CONF_INCLUDE_DISPLAY_ENTITIES,
     CONF_KIOSK,
+    CONF_MAX_HOME_TILES,
     CONF_NAME,
     CONF_PAGES,
     CONF_PINNED,
@@ -31,12 +35,14 @@ from custom_components.walldisplay_dashboards.const import (
     CONF_ROLE,
     CONF_SCENE_BUTTONS,
     CONF_SHOW_IN_SIDEBAR,
+    CONF_TEMPERATURE_ENTITY,
     CONF_URL_PATH,
     CONF_WEATHER_ENTITY,
     CONF_WIDTH,
     DEFAULT_PAGES,
     DOMAIN,
     ROLES,
+    TILE_DOMAIN_RANK,
 )
 from custom_components.walldisplay_dashboards.profiles import PROFILES
 
@@ -143,9 +149,59 @@ async def test_user_flow(hass: HomeAssistant, area_id: str) -> None:
         CONF_PINNED: [],
         CONF_HIDDEN: [],
         CONF_SCENE_BUTTONS: [],
+        CONF_CLIMATE_ENTITIES: [],
+        CONF_MAX_HOME_TILES: 0,
+        CONF_INCLUDE_DISPLAY_ENTITIES: False,
         CONF_SHOW_IN_SIDEBAR: True,
     }
     assert result["result"].unique_id == "wall-kitchen-display"
+
+
+@pytest.mark.parametrize("name", ["   ", "!!!"])
+async def test_user_flow_invalid_name(hass: HomeAssistant, area_id: str, name: str) -> None:
+    """A name without a letter or digit gives no address; the form asks again."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    user_input = {CONF_NAME: name, CONF_AREA_ID: area_id, CONF_PROFILE: "shelly_wall_display"}
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {CONF_NAME: "invalid_name"}
+    assert _suggested(result, CONF_NAME) == name  # what was typed stays in the form
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**user_input, CONF_NAME: "Hall"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_URL_PATH] == "wall-hall"
+
+
+async def test_user_flow_no_area_no_device(hass: HomeAssistant) -> None:
+    """Neither an area nor a display device: the area is required."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_NAME: "Hall", CONF_PROFILE: "shelly_wall_display"}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {CONF_AREA_ID: "area_required"}
+
+
+async def test_user_flow_unknown_device(hass: HomeAssistant) -> None:
+    """A display device that was removed meanwhile gives no area either."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_NAME: "Hall",
+            CONF_DISPLAY_DEVICE_ID: "removed-device",
+            CONF_PROFILE: "shelly_wall_display",
+        },
+    )
+    assert result["errors"] == {CONF_AREA_ID: "area_required"}
 
 
 def _display_device(hass: HomeAssistant, area_id: str | None) -> str:
@@ -204,6 +260,35 @@ async def test_user_flow_area_required(hass: HomeAssistant, area_id: str) -> Non
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_AREA_ID] == area_id
+
+
+async def test_user_flow_area_not_found(hass: HomeAssistant, area_id: str) -> None:
+    """An area that was deleted after it was picked is an error on the area field."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    user_input = {CONF_NAME: "Hall", CONF_AREA_ID: "gone", CONF_PROFILE: "shelly_wall_display"}
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {CONF_AREA_ID: "area_not_found"}
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**user_input, CONF_AREA_ID: area_id}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_reconfigure_area_not_found(hass: HomeAssistant, area_id: str) -> None:
+    """Reconfigure rejects an area that no longer exists and keeps the entry."""
+    entry = _entry(area_id)
+    entry.add_to_hass(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_AREA_ID: "gone", CONF_PROFILE: "shelly_wall_display"}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {CONF_AREA_ID: "area_not_found"}
+    assert entry.data[CONF_AREA_ID] == area_id
 
 
 async def test_user_flow_custom_size(hass: HomeAssistant, area_id: str) -> None:
@@ -394,23 +479,118 @@ async def test_options_flow(hass: HomeAssistant, area_id: str) -> None:
         CONF_PINNED: ["light.ceiling"],
         CONF_HIDDEN: [],
         CONF_SCENE_BUTTONS: ["scene.a", "script.c"],
+        CONF_CLIMATE_ENTITIES: [],
+        CONF_MAX_HOME_TILES: 0,
+        CONF_INCLUDE_DISPLAY_ENTITIES: False,
         CONF_SHOW_IN_SIDEBAR: False,
     }
 
 
-async def test_options_pinned_limited_to_area(hass: HomeAssistant, area_id: str) -> None:
-    """Pinned offers the area's tile entities when the area has any."""
-    ent_reg = er.async_get(hass)
-    light = ent_reg.async_get_or_create("light", "test", "l1", suggested_object_id="ceiling")
-    ent_reg.async_update_entity(light.entity_id, area_id=area_id)
-    sensor = ent_reg.async_get_or_create("sensor", "test", "s1", suggested_object_id="temp")
-    ent_reg.async_update_entity(sensor.entity_id, area_id=area_id)
+def _selector(result, key: str):
+    return next(v for k, v in result["data_schema"].schema.items() if k == key)
+
+
+async def test_options_pinned_from_any_room(hass: HomeAssistant, area_id: str) -> None:
+    """Pinned offers every tile domain entity, not just the room's, and keeps earlier pins."""
+    entry = _entry(area_id)
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, CONF_PINNED: ["light.living_room_lamp"]}
+    )
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    pinned = _selector(result, CONF_PINNED)
+    assert pinned.config["domain"] == list(TILE_DOMAIN_RANK)
+    assert "include_entities" not in pinned.config
+    assert pinned.config["multiple"] is True
+    assert _suggested(result, CONF_PINNED) == ["light.living_room_lamp"]
+
+    # A pin from another room is stored as it is, before the room's own.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_ROLE: "room",
+            CONF_IDLE_SECONDS: 60,
+            CONF_KIOSK: "builtin",
+            CONF_PINNED: ["light.living_room_lamp", "light.kitchen_ceiling"],
+            CONF_SHOW_IN_SIDEBAR: True,
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_PINNED] == ["light.living_room_lamp", "light.kitchen_ceiling"]
+
+
+async def test_options_room_climate_and_tiles(hass: HomeAssistant, area_id: str) -> None:
+    """Room sensors, thermostats from any room, tile limit and the display's own entities."""
     entry = _entry(area_id)
     entry.add_to_hass(hass)
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    pinned = next(v for k, v in result["data_schema"].schema.items() if k == CONF_PINNED)
-    assert pinned.config["include_entities"] == ["light.ceiling"]
+    assert _suggested(result, CONF_MAX_HOME_TILES) == 0
+    assert _suggested(result, CONF_INCLUDE_DISPLAY_ENTITIES) is False
+    assert _suggested(result, CONF_TEMPERATURE_ENTITY) is None
+    temperature = _selector(result, CONF_TEMPERATURE_ENTITY).config
+    assert (temperature["domain"], temperature["device_class"]) == (["sensor"], ["temperature"])
+    humidity = _selector(result, CONF_HUMIDITY_ENTITY).config
+    assert (humidity["domain"], humidity["device_class"]) == (["sensor"], ["humidity"])
+    climates = _selector(result, CONF_CLIMATE_ENTITIES).config
+    assert climates["domain"] == ["climate"]
+    assert climates["multiple"] is True
+    tiles = _selector(result, CONF_MAX_HOME_TILES).config
+    assert (tiles["min"], tiles["max"], tiles["step"]) == (0, 24, 1)
+
+    base = {CONF_ROLE: "room", CONF_IDLE_SECONDS: 60, CONF_KIOSK: "builtin"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            **base,
+            CONF_CLIMATE_ENTITIES: ["climate.living_room", "climate.kitchen"],
+            CONF_TEMPERATURE_ENTITY: "sensor.kitchen_temperature",
+            CONF_HUMIDITY_ENTITY: "sensor.kitchen_humidity",
+            CONF_MAX_HOME_TILES: 6.0,
+            CONF_INCLUDE_DISPLAY_ENTITIES: True,
+            CONF_SHOW_IN_SIDEBAR: True,
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_CLIMATE_ENTITIES] == ["climate.living_room", "climate.kitchen"]
+    assert entry.options[CONF_TEMPERATURE_ENTITY] == "sensor.kitchen_temperature"
+    assert entry.options[CONF_HUMIDITY_ENTITY] == "sensor.kitchen_humidity"
+    assert entry.options[CONF_MAX_HOME_TILES] == 6
+    assert entry.options[CONF_INCLUDE_DISPLAY_ENTITIES] is True
+    await hass.async_block_till_done()
+
+    # Cleared sensors are left out, so the automatic choice applies again.
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _suggested(result, CONF_TEMPERATURE_ENTITY) == "sensor.kitchen_temperature"
+    assert _suggested(result, CONF_MAX_HOME_TILES) == 6
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**base, CONF_SHOW_IN_SIDEBAR: True}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert CONF_TEMPERATURE_ENTITY not in entry.options
+    assert CONF_HUMIDITY_ENTITY not in entry.options
+    assert entry.options[CONF_CLIMATE_ENTITIES] == []
+    assert entry.options[CONF_MAX_HOME_TILES] == 0
+    assert entry.options[CONF_INCLUDE_DISPLAY_ENTITIES] is False
+
+
+async def test_options_max_home_tiles_range(hass: HomeAssistant, area_id: str) -> None:
+    """The tile limit stays within 0-24."""
+    entry = _entry(area_id)
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    with pytest.raises(InvalidData):
+        await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {
+                CONF_ROLE: "room",
+                CONF_IDLE_SECONDS: 60,
+                CONF_KIOSK: "builtin",
+                CONF_MAX_HOME_TILES: 25,
+                CONF_SHOW_IN_SIDEBAR: True,
+            },
+        )
 
 
 def _keys(tree, prefix: str = "") -> set[str]:
@@ -430,3 +610,21 @@ def test_translations_match() -> None:
     assert set(en["selector"]["role"]["options"]) == set(ROLES)
     assert en["selector"]["pages"]["options"]["climate"] == "Climate"
     assert de["selector"]["pages"]["options"]["climate"] == "Klima"
+
+
+def test_exception_translations() -> None:
+    """Every exception translation key used in code exists, with the same placeholders in de."""
+    en = json.loads((COMPONENT_DIR / "translations" / "en.json").read_text(encoding="utf-8"))
+    de = json.loads((COMPONENT_DIR / "translations" / "de.json").read_text(encoding="utf-8"))
+    used = {
+        key
+        for module in ("__init__.py", "websocket.py")
+        for key in re.findall(
+            r'translation_key="(\w+)"', (COMPONENT_DIR / module).read_text(encoding="utf-8")
+        )
+    }
+    assert used == {"url_path_taken", "display_not_found", "generate_failed"}
+    assert used <= set(en["exceptions"])
+    for key, value in en["exceptions"].items():
+        placeholders = set(re.findall(r"{(\w+)}", value["message"]))
+        assert placeholders == set(re.findall(r"{(\w+)}", de["exceptions"][key]["message"]))

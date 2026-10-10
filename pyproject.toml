@@ -12,3 +12,25 @@ asyncio_default_fixture_loop_scope = "function"
 [tool.ruff]
 target-version = "py314"
 line-length = 100
+
+[tool.coverage.run]
+source = ["custom_components.walldisplay_dashboards"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+explicit_package_bases = true
+mypy_path = "."
+packages = ["custom_components.walldisplay_dashboards"]
+
+# Home Assistant re-exports names through plain imports (websocket_api,
+# http, ...) and is itself type checked with implicit re-exports.
+[[tool.mypy.overrides]]
+module = ["homeassistant.*"]
+implicit_reexport = true

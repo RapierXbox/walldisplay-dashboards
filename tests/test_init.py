@@ -14,6 +14,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
@@ -80,17 +81,24 @@ async def test_setup_entry(hass: HomeAssistant, push, hass_storage) -> None:
     assert hass_storage[PUSH_STORE]["data"][entry.entry_id]["url_path"] == URL
 
 
-async def test_foreign_url_path_is_not_pushed(hass: HomeAssistant, push) -> None:
-    """If another panel owns the url_path, setup goes on but nothing is pushed."""
+async def test_foreign_url_path_fails_setup(hass: HomeAssistant, push) -> None:
+    """If another panel owns the url_path, setup fails (translated) and nothing is pushed."""
     from homeassistant.components import frontend
 
     frontend.async_register_built_in_panel(hass, "iframe", frontend_url_path=URL)
     entry = make_entry(hass)
-    await _setup(hass, entry)
-    assert entry.state is ConfigEntryState.LOADED
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert entry.reason == (
+        f"The address /{URL} is already used by another dashboard or panel. "
+        "Remove that dashboard or panel, then reload this entry"
+    )
+    assert entry.error_reason_translation_key == "url_path_taken"
     assert entry.runtime_data.dashboard_mode == "failed"
     assert hass.data[DATA_PANELS][URL].component_name == "iframe"
     push["push"].assert_not_awaited()
+    assert not dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
 
 
 async def test_async_setup_is_guarded(hass: HomeAssistant, push) -> None:
@@ -312,3 +320,30 @@ async def test_language_change_regenerates(hass: HomeAssistant, push) -> None:
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=10))
     await hass.async_block_till_done()
     assert [e.data["url_path"] for e in events] == [URL]
+
+
+async def test_room_check_error_is_logged(
+    hass: HomeAssistant, push, issue_registry: ir.IssueRegistry, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A room that can't be read is logged; setup still succeeds and no issue is raised."""
+    entry = make_entry(hass)
+    with patch(f"{PACKAGE}.entities.collect_input", side_effect=RuntimeError("registry broken")):
+        await _setup(hass, entry)
+    assert entry.state is ConfigEntryState.LOADED
+    assert "Could not check the room of Kitchen" in caplog.text
+    assert issue_registry.async_get_issue(DOMAIN, f"empty_room_{entry.entry_id}") is None
+
+
+async def test_remove_entry_not_loaded(hass: HomeAssistant, push, hass_storage) -> None:
+    """Removing an entry that was never set up in this run still forgets its push record."""
+    entry = make_entry(hass)
+    other = "other-entry"
+    record = {"url_path": URL, "display_device_id": None, "display_host": None}
+    hass_storage[PUSH_STORE] = {
+        "version": 1,
+        "key": PUSH_STORE,
+        "data": {entry.entry_id: record, other: record},
+    }
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass_storage[PUSH_STORE]["data"] == {other: record}

@@ -1,0 +1,234 @@
+{
+  "title": "Ben",
+  "views": [
+    {
+      "type": "sections",
+      "title": "Start",
+      "path": "home",
+      "icon": "mdi:home",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Start",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Klima",
+              "icon": "mdi:thermostat",
+              "entity": "climate.og_flur_heizung",
+              "temperature_entity": "sensor.ben_temperatur"
+            }
+          ]
+        },
+        "max_width": 168
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "clock",
+              "clock_size": "medium",
+              "no_background": true,
+              "date_format": [
+                "weekday-long",
+                "day-numeric",
+                "month-long"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 2,
+                "min_columns": 6,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "weather.forecast_home",
+              "name": "Draußen",
+              "state_content": [
+                "temperature",
+                "state"
+              ],
+              "vertical": true,
+              "grid_options": {
+                "columns": 6,
+                "rows": 2,
+                "min_columns": 6,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "switch.ben_display_relais",
+              "name": "Relais",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_bett",
+              "name": "Bett Licht",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_licht",
+              "name": "Licht",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_licht_eingang",
+              "name": "Licht Eingang",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "cover.ben_raffstore_nord",
+              "name": "Raffstore Nord",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "toggle"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "cover.ben_raffstore_west",
+              "name": "Raffstore West",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "toggle"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sections",
+      "title": "Klima",
+      "path": "climate",
+      "icon": "mdi:thermostat",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Start",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Klima",
+              "icon": "mdi:thermostat",
+              "entity": "climate.og_flur_heizung",
+              "temperature_entity": "sensor.ben_temperatur"
+            }
+          ]
+        },
+        "max_width": 168
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "thermostat",
+              "entity": "climate.og_flur_heizung",
+              "name": "Heizung",
+              "grid_options": {
+                "columns": 12,
+                "rows": 6,
+                "min_columns": 12,
+                "min_rows": 6
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

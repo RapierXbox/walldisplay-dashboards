@@ -38,6 +38,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import collection
 from homeassistant.helpers.storage import Store
+from homeassistant.util.hass_dict import HassKey
 
 from .const import (
     CONF_NAME,
@@ -63,10 +64,13 @@ _COLLECTION_COMMANDS = (
     "lovelace/dashboards/delete",
     "lovelace/dashboards/list",
 )
-_FALLBACK_KEY = f"{DOMAIN}_fallback_panels"
+# Lovelace's DashboardsCollection is a DictStorageCollection.
+type DashboardsCollection = collection.DictStorageCollection
+
+_FALLBACK_KEY: HassKey[set[str]] = HassKey(f"{DOMAIN}_fallback_panels")
 # show_in_sidebar as last applied per url_path, so a later change made in
 # Settings > Dashboards survives until the option itself changes.
-_APPLIED_KEY = f"{DOMAIN}_applied"
+_APPLIED_KEY: HassKey[_Applied] = HassKey(f"{DOMAIN}_applied")
 APPLIED_STORE_KEY = f"{DOMAIN}.dashboards"
 APPLIED_STORE_VERSION = 1
 
@@ -132,7 +136,7 @@ def _iter_children(obj: Any) -> Iterable[Any]:
             continue
 
 
-def _collection_from_handler(handler: Any) -> collection.StorageCollection | None:
+def _collection_from_handler(handler: Any) -> DashboardsCollection | None:
     """Walk decorators/bound methods until a storage collection turns up."""
     seen: set[int] = set()
     stack = [handler]
@@ -142,13 +146,13 @@ def _collection_from_handler(handler: Any) -> collection.StorageCollection | Non
             continue
         seen.add(id(obj))
         found = getattr(obj, "storage_collection", None)
-        if isinstance(found, collection.StorageCollection):
+        if isinstance(found, collection.DictStorageCollection):
             return found
         stack.extend(_iter_children(obj))
     return None
 
 
-def find_dashboards_collection(hass: HomeAssistant) -> collection.StorageCollection | None:
+def find_dashboards_collection(hass: HomeAssistant) -> DashboardsCollection | None:
     """Return lovelace's DashboardsCollection, or None if it can't be found."""
     handlers: dict[str, Any] = hass.data.get(websocket_api.DOMAIN) or {}
     for command in _COLLECTION_COMMANDS:
@@ -173,7 +177,7 @@ def _desired_item(entry: ConfigEntry) -> dict[str, Any]:
     }
 
 
-def _find_item(coll: collection.StorageCollection, url_path: str) -> dict[str, Any] | None:
+def _find_item(coll: DashboardsCollection, url_path: str) -> dict[str, Any] | None:
     for item in coll.async_items():
         if item.get("url_path") == url_path:
             return item
@@ -227,7 +231,7 @@ def _fallback_paths(hass: HomeAssistant) -> set[str]:
 
 
 async def _async_ensure_collection(
-    hass: HomeAssistant, entry: ConfigEntry, coll: collection.StorageCollection
+    hass: HomeAssistant, entry: ConfigEntry, coll: DashboardsCollection
 ) -> bool:
     """Create or update the dashboard item. Returns False if it can't be owned."""
     desired = _desired_item(entry)
@@ -347,10 +351,12 @@ async def async_remove_dashboard(hass: HomeAssistant, entry: ConfigEntry) -> Non
         return
 
     # Not loaded in this run: drop the storage file directly, if it is ours.
-    store = Store[dict[str, Any]](hass, CONFIG_STORAGE_VERSION, CONFIG_STORAGE_KEY.format(url_path))
-    stored = await store.async_load()
+    file_store = Store[dict[str, Any]](
+        hass, CONFIG_STORAGE_VERSION, CONFIG_STORAGE_KEY.format(url_path)
+    )
+    stored = await file_store.async_load()
     config = stored.get("config") if isinstance(stored, dict) else None
     if config is not None and not is_own_strategy(config):
         _log_taken_over(url_path, "keeping it")
         return
-    await store.async_remove()
+    await file_store.async_remove()

@@ -1,0 +1,187 @@
+rules:
+  # Bronze
+  action-setup:
+    status: exempt
+    comment: The integration registers no service actions.
+  appropriate-polling:
+    status: exempt
+    comment: >
+      Nothing is polled. The only entity is pushed: the display reports its viewport over the
+      websocket and the sensor has should_poll = False.
+  brands:
+    status: done
+    comment: Brand images ship in the brand folder of the integration.
+  common-modules:
+    status: done
+    comment: >
+      No coordinator and a single entity, so no base entity is needed. Shared code lives in its own
+      modules: dashboards.py (Lovelace), display_link.py (display push), entities.py (registry
+      input), generator/ (layout).
+  config-flow-test-coverage:
+    status: done
+    comment: >
+      tests/test_config_flow.py covers config_flow.py at 100 % (user, custom size, reconfigure and
+      options steps with every error); CI fails below 100 % for this file.
+  config-flow:
+    status: done
+    comment: >
+      User, custom size, reconfigure and options steps, all with data_description. The options
+      include pins and thermostats from any room, room temperature/humidity sensors, a Home tile
+      limit and whether the display's own entities become tiles.
+  dependency-transparency:
+    status: done
+    comment: No requirements; everything comes from Home Assistant itself.
+  docs-actions:
+    status: exempt
+    comment: The integration registers no service actions.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions:
+    status: done
+    comment: README "remove" section (entries, HACS or manual files, what stays behind).
+  entity-event-setup:
+    status: done
+    comment: The sensor subscribes to the viewport dispatcher signal in async_added_to_hass with async_on_remove.
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data: done
+  test-before-configure:
+    status: exempt
+    comment: >
+      Nothing has to be reached for the integration to work. The flow still checks what can fail:
+      the name, that the dashboard address is free and that the area exists. The optional display
+      host is a best-effort push target with a notification fallback and the display may be off
+      during setup, so it is not contacted.
+  test-before-setup:
+    status: done
+    comment: >
+      Setup claims the dashboard address and raises ConfigEntryError when another dashboard or
+      panel owns it, so the display is never pointed at someone else's dashboard.
+  unique-config-entry:
+    status: done
+    comment: The unique ID is the dashboard url_path, so a name can only be set up once.
+
+  # Silver
+  action-exceptions:
+    status: exempt
+    comment: The integration registers no service actions.
+  config-entry-unloading: done
+  docs-configuration-parameters: done
+  docs-installation-parameters: done
+  entity-unavailable:
+    status: exempt
+    comment: >
+      The sensor holds the last viewport the display reported (restored after a restart). There is
+      no connection behind it that could fail, so it never becomes unavailable.
+  integration-owner: done
+  log-when-unavailable:
+    status: exempt
+    comment: >
+      No device or service is polled or kept connected. The best-effort URL push to a display logs a
+      warning once per failed attempt; it only runs on setup or when the target changes.
+  parallel-updates:
+    status: done
+    comment: PARALLEL_UPDATES = 0 in sensor.py (push only).
+  reauthentication-flow:
+    status: exempt
+    comment: No authentication is involved.
+  test-coverage:
+    status: done
+    comment: >
+      2203 tests, 98.6 % coverage of the package; CI (pytest.yml) fails below 95 %. Every backend
+      module (__init__, config flow, dashboards, display link, websocket, repairs, sensor,
+      diagnostics) is at 100 %.
+
+  # Gold
+  devices:
+    status: done
+    comment: >
+      One service device per entry, identified by the entry id: display name, the display model as
+      model and a configuration URL that opens the dashboard.
+  diagnostics:
+    status: done
+    comment: >
+      Entry data (display host redacted) and options, resolved profile, last viewport report,
+      dashboard mode, row budget and the generated views with card counts. No entity states.
+  discovery-update-info:
+    status: exempt
+    comment: Nothing is discovered (see discovery).
+  discovery:
+    status: exempt
+    comment: >
+      A dashboard is not something on the network. The display device is linked through its own
+      integration (Shelly or ShellyElevate), which does the discovery.
+  docs-data-update:
+    status: done
+    comment: >
+      README "how it updates": no polling, rebuilt on every page load, open dashboards rebuild
+      after registry or language changes, reloads on options/reconfigure/repair, when the URL is
+      pushed.
+  docs-examples:
+    status: done
+    comment: >
+      README "examples": wake the display on motion, show the media page when music starts, pin
+      and hide (pins from any room), an entrance panel.
+  docs-known-limitations:
+    status: done
+    comment: README "limits" section.
+  docs-supported-devices:
+    status: done
+    comment: >
+      README "displays": every display model with its layout size, which browsers and kiosk apps
+      work and which displays cannot work.
+  docs-supported-functions:
+    status: done
+    comment: >
+      README "what you get": the dashboard, the service device, the measured viewport sensor and
+      its attributes, the repairs, diagnostics and the URL notification.
+  docs-troubleshooting:
+    status: done
+    comment: README "problems" section.
+  docs-use-cases:
+    status: done
+    comment: README "what its for" (room panels, the entrance panel, a tablet as room remote, many rooms).
+  dynamic-devices:
+    status: exempt
+    comment: Each config entry is exactly one display, so no devices are added at runtime.
+  entity-category: done
+  entity-device-class:
+    status: done
+    comment: The only sensor holds a text value ("480x480@1.5"); no sensor device class fits it.
+  entity-disabled-by-default:
+    status: done
+    comment: >
+      The measured viewport sensor stays enabled on purpose: it is how the user checks the display
+      size and it only changes when the display reports, so it is not noisy.
+  entity-translations: done
+  exception-translations:
+    status: done
+    comment: >
+      ConfigEntryError on setup and the websocket errors (unknown display, failed build) use
+      translation keys from the exceptions section.
+  icon-translations:
+    status: done
+    comment: icons.json; no icon is set in code.
+  reconfiguration-flow: done
+  repair-issues:
+    status: done
+    comment: Viewport mismatch (fixable, adopts the measured size) and empty room.
+  stale-devices:
+    status: done
+    comment: >
+      One static device per entry that Home Assistant removes with the entry. Setup also detaches
+      any other device still linked to the entry, so none is left orphaned.
+
+  # Platinum
+  async-dependency:
+    status: done
+    comment: No third-party library; the only I/O is HTTP through Home Assistant's aiohttp session.
+  inject-websession:
+    status: done
+    comment: display_link.py uses async_get_clientsession(hass).
+  strict-typing:
+    status: done
+    comment: >
+      py.typed ships with the package and CI runs mypy --strict (pyproject.toml) over all of it:
+      typed ConfigEntry alias, HassKey for hass.data and TypedDicts for the viewport report and the
+      row budget.

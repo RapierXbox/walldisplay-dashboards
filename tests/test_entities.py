@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
@@ -13,13 +14,15 @@ from homeassistant.helpers import (
 from homeassistant.helpers import (
     entity_registry as er,
 )
+from homeassistant.helpers import (
+    floor_registry as fr,
+)
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.walldisplay_dashboards.const import DOMAIN
 from custom_components.walldisplay_dashboards.entities import (
     collect_input,
     display_config_from_entry,
-    strip_area_prefix,
 )
 
 
@@ -200,14 +203,6 @@ def _display_entry(hass: HomeAssistant, ids: dict[str, str], **options) -> MockC
     return entry
 
 
-def test_strip_area_prefix() -> None:
-    assert strip_area_prefix("Kitchen Ceiling", "Kitchen") == "Ceiling"
-    assert strip_area_prefix("kitchen - counter light", "Kitchen") == "Counter light"
-    assert strip_area_prefix("Kitchen", "Kitchen") == "Kitchen"
-    assert strip_area_prefix("Kitchenette lamp", "Kitchen") == "Kitchenette lamp"
-    assert strip_area_prefix("Ceiling", None) == "Ceiling"
-
-
 async def test_display_config(hass: HomeAssistant) -> None:
     ids = await _house(hass)
     entry = _display_entry(
@@ -359,3 +354,153 @@ async def test_icons_and_weather_features(hass: HomeAssistant) -> None:
     assert scenes[ids["cooking"]].icon == "mdi:pot-steam"
     house = {e.entity_id: e for e in data.house_scenes}
     assert house[ids["away"]].icon is None
+
+
+async def test_display_config_room_options(hass: HomeAssistant) -> None:
+    """The room sensor, thermostat, tile limit and display entity options are read."""
+    ids = await _house(hass)
+    entry = _display_entry(
+        hass,
+        ids,
+        climate_entities=[ids["living_climate"], ids["heating"]],
+        temperature_entity=ids["temp"],
+        humidity_entity="",
+        max_home_tiles=6.0,
+        include_display_entities=True,
+    )
+    display = display_config_from_entry(hass, entry)
+    overrides = display.overrides
+    assert overrides.climate_entities == (ids["living_climate"], ids["heating"])
+    assert overrides.temperature_entity == ids["temp"]
+    assert overrides.humidity_entity is None  # cleared
+    assert overrides.max_home_tiles == 6
+    assert overrides.include_display_entities is True
+    assert display.display_device_id == ids["display_device"]
+
+
+@pytest.mark.parametrize(("value", "limit"), [(None, 0), (30, 24), (-3, 0), ("6", 0), (True, 0)])
+async def test_max_home_tiles_bounds(hass: HomeAssistant, value: object, limit: int) -> None:
+    """Out-of-range or malformed tile limits fall back into 0-24 (0 = automatic)."""
+    ids = await _house(hass)
+    entry = _display_entry(hass, ids, max_home_tiles=value)
+    assert display_config_from_entry(hass, entry).overrides.max_home_tiles == limit
+
+
+async def test_single_entity_options(hass: HomeAssistant) -> None:
+    """A single id where a list is stored still counts; an unknown device has no area."""
+    ids = await _house(hass)
+    entry = _display_entry(hass, ids, pinned=ids["coffee"])
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, "area_id": None, "display_device_id": "gone"}
+    )
+    display = display_config_from_entry(hass, entry)
+    assert display.overrides.pinned == (ids["coffee"],)
+    assert display.area_id is None
+    data = collect_input(hass, display)
+    # No area: only the pinned entity, and no room pages.
+    assert [e.entity_id for e in data.area_entities] == [ids["coffee"]]
+    assert data.climates == () and data.scenes == ()
+
+
+async def test_pinned_without_state_is_skipped(hass: HomeAssistant) -> None:
+    """A pinned entity that has no state (removed integration) is left out."""
+    ids = await _house(hass)
+    entry = _display_entry(hass, ids, pinned=["light.removed", ids["tv"]])
+    data = collect_input(hass, display_config_from_entry(hass, entry))
+    order = [e.entity_id for e in data.area_entities]
+    assert "light.removed" not in order
+    assert order[0] == ids["tv"]  # from the Living Room
+
+
+async def test_climate_entities_from_any_room(hass: HomeAssistant) -> None:
+    """Chosen thermostats join the input and drive the Climate page, the first as main."""
+    from custom_components.walldisplay_dashboards.generator import build_dashboard
+
+    ids = await _house(hass)
+    entry = _display_entry(hass, ids, climate_entities=[ids["living_climate"], "sensor.no"])
+    data = collect_input(hass, display_config_from_entry(hass, entry))
+    assert {e.entity_id for e in data.climates} == {ids["heating"], ids["living_climate"]}
+
+    views = {v["path"]: v for v in build_dashboard(data)["views"]}
+    (thermostat,) = views["climate"]["sections"][0]["cards"][:1]
+    assert thermostat["type"] == "thermostat"
+    assert thermostat["entity"] == ids["living_climate"]
+    assert thermostat["name"] == "Thermostat"  # its own name, not the Kitchen's
+    # The Kitchen's own thermostat is not on the Climate page, so it stays on Home.
+    home = views["home"]["sections"][0]["cards"]
+    assert ids["heating"] in {card.get("entity") for card in home}
+
+
+async def test_names_lose_room_and_floor(hass: HomeAssistant) -> None:
+    """Area and floor names go from tile names, anywhere in the name (Ben on the OG)."""
+    floor = fr.async_get(hass).async_create("OG")
+    ben = ar.async_get(hass).async_create("Ben", floor_id=floor.floor_id).id
+    names = {
+        "licht": "Licht Ben OG",
+        "eingang": "Licht Eingang Ben OG",
+        "nord": "Raffstore OG Ben Nord",
+        "west": "Raffstore OG Ben West",
+        "bett": "Ben Bett Licht",
+    }
+    for key, name in names.items():
+        domain = "cover" if "Raffstore" in name else "light"
+        _entity(hass, domain, key, "off", friendly_name=name, area_id=ben)
+    # A name the user gave the entity in Home Assistant is used, and cleaned the same way.
+    renamed = _entity(hass, "light", "desk", "off", name="Desk lamp", area_id=ben)
+    er.async_get(hass).async_update_entity(renamed, name="Schreibtisch Ben")
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Ben",
+        data={
+            "name": "Ben",
+            "url_path": "wall-ben",
+            "area_id": ben,
+            "profile": "shelly_wall_display",
+        },
+    )
+    entry.add_to_hass(hass)
+    data = collect_input(hass, display_config_from_entry(hass, entry))
+    assert sorted(e.name for e in data.area_entities) == [
+        "Bett Licht",
+        "Licht",
+        "Licht Eingang",
+        "Raffstore Nord",
+        "Raffstore West",
+        "Schreibtisch",
+    ]
+
+
+async def test_display_entities_are_not_tiles(hass: HomeAssistant) -> None:
+    """The display's screen light, relay and switches aren't tiles; pinning brings one back."""
+    from custom_components.walldisplay_dashboards.generator import build_dashboard
+
+    ids = await _house(hass)
+    device = ids["display_device"]
+    own = {
+        key: _entity(hass, domain, key, "off", name=name, device_id=device)
+        for key, domain, name in (
+            ("screen", "light", "Bildschirm"),
+            ("mute", "switch", "Mikrofon stummschalten"),
+            ("night", "switch", "Nachtmodus"),
+            ("relay", "switch", "Relais"),
+        )
+    }
+
+    def home_entities(**options) -> set[str]:
+        entry = _display_entry(hass, ids, **options)
+        data = collect_input(hass, display_config_from_entry(hass, entry))
+        assert {own["screen"], own["relay"]} <= {e.entity_id for e in data.area_entities}
+        home = build_dashboard(data)["views"][0]
+        return {
+            card.get("entity")
+            for card in home["sections"][0]["cards"]
+            if card.get("type") in ("tile", "shortcut")
+        }
+
+    assert not home_entities() & set(own.values())
+    assert home_entities(pinned=[own["relay"]]) & set(own.values()) == {own["relay"]}
+    assert home_entities(include_display_entities=True, max_home_tiles=24) >= {
+        own["screen"],
+        own["relay"],
+    }

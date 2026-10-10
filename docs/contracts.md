@@ -54,13 +54,20 @@ async def async_refresh_display(hass, entry) -> bool
 def find_display_sensors(hass, device_id) -> tuple[str | None, str | None]   # (temperature, humidity)
 ```
 
-Runtime data: `entry.runtime_data` is a `WallDisplayData` dataclass defined in `__init__.py` with at least `viewport: dict | None` (last reported) and `dashboard_mode: str`.
+Runtime data: `entry.runtime_data` is a `WallDisplayData` dataclass defined in `__init__.py` (`type WallDisplayConfigEntry = ConfigEntry[WallDisplayData]`) with at least `viewport: ViewportReport | None` (last reported, `models.ViewportReport`) and `dashboard_mode: str`.
 
 ## Config entry layout
 
 `entry.data`: `name`, `url_path`, `area_id`, `profile`, `width`, `height` (only for `custom` or adopted measurements), `display_device_id` (optional), `display_host` (optional IP/hostname of a ShellyElevate device without the HA integration), `weather_entity` (optional).
 
-`entry.options`: `pages` (list, subset of `climate`, `media`, `scenes`, in nav order), `idle_seconds` (int, 0 = off), `kiosk` (`builtin` | `kiosk_mode` | `off`), `pinned` (list of entity ids), `hidden` (list), `scene_buttons` (list, max 2; "Favourite scenes", listed first on the Scenes page), `role` (`room` | `entrance`), `show_in_sidebar` (bool, default true).
+`entry.options`: `pages` (list, subset of `climate`, `media`, `scenes`, in nav order), `idle_seconds` (int, 0 = off), `kiosk` (`builtin` | `kiosk_mode` | `off`), `pinned` (list of entity ids of the tile domains, from any room), `hidden` (list), `scene_buttons` (list, max 2; "Favourite scenes", listed first on the Scenes page), `role` (`room` | `entrance`), `show_in_sidebar` (bool, default true), `climate_entities` (list of climate entity ids from any room; if set they drive the Climate page instead of the area's climates, the first is the main thermostat, and the page exists even without a climate in the area; the area's other climates stay on Home), `temperature_entity` / `humidity_entity` (optional sensor entity ids, absent = automatic), `max_home_tiles` (int 0–24, 0 = as many as fit; otherwise Home has at most that many slots, the last one "+N more" when entities are left over), `include_display_entities` (bool, default false: entities of the `display_device_id` device are no tiles and are excluded from the room card unless pinned).
+
+Room temperature and humidity (`generator.room.room_temperature` / `room_humidity`), per class: the `temperature_entity` / `humidity_entity` option, else the area registry's `temperature_entity_id` / `humidity_entity_id`, else the display device's sensor (`find_display_sensors`), else the first visible area sensor of that class. Used by:
+- the room card (HA's `area` card): it can't be pointed at an entity, so the area's other sensors of the class go into `exclude_entities`; an option it can't show (outside the area, or not the area's designated sensor) drops the class from `sensor_classes`;
+- the Climate page side info: humidity always, temperature only when the option is set (otherwise the thermostat shows it, U3);
+- the nav pill: with the temperature option, the Climate item carries `temperature_entity` and shows that sensor's value instead of the climate's current temperature.
+
+Tile names (`names.clean_name`): the entity's own name (registry name, original name, else friendly name) without the area name and the area's floor name, as whole words anywhere and in any case; dangling separators are dropped and spaces collapsed; a name that would become empty is kept as it is.
 
 `unique_id` = `url_path`.
 

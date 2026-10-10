@@ -10,16 +10,17 @@ The thermostat shows its -/+ buttons only while the dial is at least 250 px
   the thermostat spans the full width and the card becomes a 1-row strip;
 - portrait: thermostat on top (with features), humidity and other climates as
   small tiles below.
-No second room temperature: the thermostat already shows it (U3).
+No second room temperature: the thermostat already shows it (U3), unless
+the options name a room temperature sensor; then it is a tile like humidity.
 """
 
 from __future__ import annotations
 
 import math
+from typing import Any
 
-from ..const import PAGE_CLIMATE
+from ..const import MIN_HORIZONTAL_TILE_PX, PAGE_CLIMATE
 from ..layout import (
-    MIN_HORIZONTAL_TILE_PX,
     TileFill,
     card_column_px,
     rows_px,
@@ -31,7 +32,7 @@ from . import cards
 from .cards import Card
 from .info import ClimateInfo
 from .labels import label
-from .room import page_entities, room_humidity
+from .room import page_entities, room_humidity, room_temperature
 
 __all__ = ["ClimateInfo", "below_split", "climate_plan", "side_column"]
 
@@ -43,19 +44,19 @@ FEATURE_ROW_PX = 64
 SIDE_MAX_ROWS = 3  # side tiles share all rows, each at most this tall
 
 
-def feature_rows(features: list[dict]) -> int:
+def feature_rows(features: list[dict[str, Any]]) -> int:
     """Rows the thermostat card adds for its features (hui-thermostat-card)."""
     return math.ceil(len(features) * 2 / 3) if features else 0
 
 
-def hvac_feature(entity: EntityInfo) -> dict | None:
+def hvac_feature(entity: EntityInfo) -> dict[str, Any] | None:
     modes = list(getattr(entity, "hvac_modes", ()))
     if len(modes) < 2:
         return None
     return {"type": "climate-hvac-modes", "style": "icons", "hvac_modes": modes}
 
 
-def preset_feature(entity: EntityInfo) -> dict | None:
+def preset_feature(entity: EntityInfo) -> dict[str, Any] | None:
     presets = list(getattr(entity, "preset_modes", ()))
     if not presets:
         return None
@@ -63,7 +64,7 @@ def preset_feature(entity: EntityInfo) -> dict | None:
     return {"type": "climate-preset-modes", "style": style, "preset_modes": presets}
 
 
-def dial_fits(rows: int, width_px: float, features: list[dict]) -> bool:
+def dial_fits(rows: int, width_px: float, features: list[dict[str, Any]]) -> bool:
     height = rows_px(rows) - FEATURE_ROW_PX * feature_rows(features)
     return height >= DIAL_CARD_MIN_PX and width_px >= DIAL_MIN_WIDTH_PX
 
@@ -74,7 +75,7 @@ def thermostat(entity: EntityInfo, name: str, rows: int, width_px: float) -> tup
     Returns the card and whether the hvac modes had to be left off.
     """
     hvac, preset = hvac_feature(entity), preset_feature(entity)
-    features: list[dict] = []
+    features: list[dict[str, Any]] = []
     for feature in (hvac, preset):
         if feature and dial_fits(rows, width_px, [*features, feature]):
             features.append(feature)
@@ -100,6 +101,16 @@ def _mode_tile(entity: EntityInfo, language: str) -> Card:
         hide_state=True,
         features=[hvac_feature(entity)],
     )
+
+
+def room_values(data: GeneratorInput) -> list[Card]:
+    """Room sensor tiles: the chosen temperature (option only, U3), then humidity."""
+    result: list[Card] = []
+    temperature = room_temperature(data) if data.display.overrides.temperature_entity else None
+    for entity_id, key in ((temperature, "temperature"), (room_humidity(data), "humidity")):
+        if entity_id:
+            result.append(cards.tile(entity_id, label(data.language, key)))
+    return result
 
 
 def side_column(items: int, rows: int) -> tuple[int, int]:
@@ -153,11 +164,13 @@ def climate_plan(data: GeneratorInput, grid: Grid) -> tuple[list[Card], list[Ent
     if not entities or grid.rows <= 0:
         return [], []
     primary, others = entities[0], entities[1:]
-    name = data.area_name if not others else primary.name
+    # A thermostat from another room (options) keeps its own name.
+    in_room = primary.area_id == data.display.area_id
+    name = data.area_name if not others and in_room else primary.name
     profile = data.display.profile
     column_px = card_column_px(profile)
     total, rows = grid.card_columns, grid.rows
-    humidity = room_humidity(data)
+    values = room_values(data)
 
     if profile.orientation == "landscape":
         main, side = side_split(profile, total)
@@ -165,8 +178,7 @@ def climate_plan(data: GeneratorInput, grid: Grid) -> tuple[list[Card], list[Ent
         side_cards: list[tuple[Card, int]] = []
         if modes_dropped:
             side_cards.append((_mode_tile(primary, data.language), 2))
-        if humidity:
-            side_cards.append((cards.tile(humidity, label(data.language, "humidity")), 1))
+        side_cards += [(value, 1) for value in values]
         if not side or not (side_cards or others):
             card, _ = thermostat(primary, name, rows, span_px(total, column_px))
             return [cards.sized(card, total, rows)], others  # no room for a "+N more"
@@ -196,7 +208,7 @@ def climate_plan(data: GeneratorInput, grid: Grid) -> tuple[list[Card], list[Ent
 
     width_px = span_px(total, column_px)
     if profile.orientation == "portrait":
-        n_extra = len(others) + (1 if humidity else 0)
+        n_extra = len(others) + len(values)
     else:
         n_extra = len(others)  # square: the thermostat alone, extra climates below
     main_rows, fill = below_split(n_extra, total, rows, column_px, MIN_DIAL_ROWS)
@@ -207,11 +219,8 @@ def climate_plan(data: GeneratorInput, grid: Grid) -> tuple[list[Card], list[Ent
     result = [cards.sized(card, total, main_rows)]
     extras: list[Card] = []
     vertical = fill.rows >= 2
-    if profile.orientation == "portrait" and humidity:
-        tile = cards.tile(humidity, label(data.language, "humidity"))
-        if vertical:
-            tile["vertical"] = True
-        extras.append(tile)
+    if profile.orientation == "portrait":
+        extras += [{**value, "vertical": True} if vertical else value for value in values]
     shown_others = others[: max(0, fill.count - len(extras))]
     extras += [_climate_tile(e, vertical) for e in shown_others]
     result += [cards.sized(c, fill.columns, fill.rows) for c in extras[: fill.count]]

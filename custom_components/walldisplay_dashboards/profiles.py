@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Any, TypeGuard
 
 from .models import Profile
 
@@ -27,7 +28,8 @@ PROFILES: dict[str, Profile] = {
 }
 
 
-def _valid(size: int | None) -> bool:
+def _valid(size: Any) -> TypeGuard[int]:
+    """A usable CSS size: a positive int (entry data is untyped JSON)."""
     return isinstance(size, int) and not isinstance(size, bool) and size > 0
 
 
@@ -38,14 +40,14 @@ def resolve_profile(profile_id: str, width: int | None, height: int | None) -> P
     in which case they are a measured size adopted through the repair flow.
     Unknown ids fall back to the custom size if given, else the default display.
     """
-    sized = _valid(width) and _valid(height)
+    size = (width, height) if _valid(width) and _valid(height) else None
     if profile_id == CUSTOM or profile_id not in PROFILES:
-        if sized:
-            return replace(PROFILES[CUSTOM], width=width, height=height)
+        if size is not None:
+            return replace(PROFILES[CUSTOM], width=size[0], height=size[1])
         if profile_id == CUSTOM:
             return PROFILES[CUSTOM]
         return PROFILES[DEFAULT_PROFILE]
     profile = PROFILES[profile_id]
-    if sized:
-        return replace(profile, width=width, height=height, measured=True)
+    if size is not None:
+        return replace(profile, width=size[0], height=size[1], measured=True)
     return profile

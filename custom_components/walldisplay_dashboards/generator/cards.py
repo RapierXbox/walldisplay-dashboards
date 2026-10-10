@@ -245,15 +245,28 @@ def forecast(entity_id: str, weather_features: int) -> Card | None:
     }
 
 
-def area_card(area_id: str, controls: list[str]) -> Card:
-    """Native room card: name, temperature/humidity, open-window badge, master switch."""
+def area_card(
+    area_id: str,
+    controls: list[str],
+    *,
+    sensor_classes: list[str] | None = None,
+    exclude_entities: list[str] | None = None,
+) -> Card:
+    """Native room card: name, temperature/humidity, open-window badge, master switch.
+
+    `exclude_entities` keeps entities out of its sensor values and controls.
+    """
     card: Card = {
         "type": "area",
         "area": area_id,
         "display_type": "compact",
-        "sensor_classes": ["temperature", "humidity"],
+        "sensor_classes": (
+            list(sensor_classes) if sensor_classes is not None else ["temperature", "humidity"]
+        ),
         "alert_classes": ["window", "door", "moisture"],
     }
+    if exclude_entities:
+        card["exclude_entities"] = list(exclude_entities)
     if controls:
         card["features"] = [{"type": "area-controls", "controls": list(controls)}]
         card["features_position"] = "bottom"

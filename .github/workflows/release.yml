@@ -1,36 +1,96 @@
 name: Release
 
-# Push a tag such as v0.1.0 to publish a GitHub release. HACS installs straight from the
-# repository at that tag (no zip asset) and lists the latest releases for users to pick.
+# Every push to main that changes the integration publishes a new version:
+# the patch number goes up (0.1.0 -> 0.1.1), manifest.json is updated, the commit is tagged
+# and a GitHub release with the zip is published, so HACS offers it as an update.
+# For a minor or major release, run this workflow by hand (Actions -> Release -> Run workflow).
+#
+# No loop: the "Release vX.Y.Z" commit and tag are pushed with GITHUB_TOKEN, and pushes made
+# with GITHUB_TOKEN never start workflows. The job condition below guards against it as well,
+# in case the push token is ever swapped for a personal access token.
 
 on:
   push:
-    tags: ["v*.*.*"]
+    branches: [main]
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Part of the version to raise
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
-    name: GitHub release
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Check the tag matches manifest.json
-        run: |
-          tag="${GITHUB_REF_NAME#v}"
-          version="$(jq -r .version custom_components/walldisplay_dashboards/manifest.json)"
-          if [ "$tag" != "$version" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match manifest version $version"
-            exit 1
-          fi
-
-      - name: Create the release
+      - name: Work out the version
+        id: version
         env:
-          GH_TOKEN: ${{ github.token }}
+          BUMP: ${{ inputs.bump || 'patch' }}
         run: |
-          prerelease=""
-          case "$GITHUB_REF_NAME" in *-*|*a*|*b*|*rc*) prerelease="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
-            --title "$GITHUB_REF_NAME" $prerelease
+          python3 - <<'PY'
+          import json, os, subprocess
+
+          path = "custom_components/walldisplay_dashboards/manifest.json"
+          manifest = json.load(open(path, encoding="utf-8"))
+          current = manifest["version"]
+          tagged = subprocess.run(["git", "tag", "--list", f"v{current}"], capture_output=True, text=True).stdout.strip()
+          if not tagged:
+              version = current  # this version was never released yet: release it as it is
+          else:
+              major, minor, patch = (int(part) for part in current.split("."))
+              bump = os.environ["BUMP"]
+              if bump == "major":
+                  major, minor, patch = major + 1, 0, 0
+              elif bump == "minor":
+                  minor, patch = minor + 1, 0
+              else:
+                  patch += 1
+              version = f"{major}.{minor}.{patch}"
+          manifest["version"] = version
+          with open(path, "w", encoding="utf-8") as file:
+              json.dump(manifest, file, indent=2, ensure_ascii=False)
+              file.write("\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"version={version}\n")
+          PY
+
+      - name: Commit and tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet; then
+            git commit -am "Release v$VERSION"
+          fi
+          # someone may have pushed in the meantime; tag only what ends up on main
+          git pull --rebase origin main
+          git tag "v$VERSION"
+          git push origin HEAD:main "v$VERSION"
+
+      - name: Zip the integration
+        run: cd custom_components/walldisplay_dashboards && zip -r ../../walldisplay_dashboards.zip . -x "__pycache__/*" "*/__pycache__/*"
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: walldisplay_dashboards.zip

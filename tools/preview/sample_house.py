@@ -2,9 +2,10 @@
 
 The default display hangs in the Kitchen. `sample_input(profile)` returns the
 GeneratorInput that entities.collect_input() would build for it;
-`entrance_input` is a Hallway display with the entrance role and `empty_input`
-a guest room with one lamp. `STATES` holds mock Home Assistant states for
-every entity used.
+`entrance_input` is a Hallway display with the entrance role, `empty_input`
+a guest room with one lamp and `ben_input` a German room display on an upper
+floor (raw names, the display's own entities, the room options). `STATES`
+holds mock Home Assistant states for every entity used.
 
 Works without Home Assistant installed: when `homeassistant` can't be
 imported, the integration package is registered by path without running its
@@ -42,6 +43,7 @@ def ensure_package() -> None:
 ensure_package()
 models = importlib.import_module(f"{PACKAGE}.models")
 profiles = importlib.import_module(f"{PACKAGE}.profiles")
+names = importlib.import_module(f"{PACKAGE}.names")
 info = importlib.import_module(f"{PACKAGE}.generator.info")
 ClimateInfo = info.ClimateInfo
 LightInfo = info.LightInfo
@@ -63,6 +65,8 @@ AREA_NAMES = {
     "dining_room": "Dining Room",
     "hallway": "Hallway",
     "guest_room": "Guest Room",
+    "ben": "Ben",
+    "flur_og": "Flur",
 }
 
 # Feature bits as Home Assistant reports them.
@@ -261,6 +265,93 @@ def empty_input(profile: Any | None = None, *, language: str = "en") -> Any:
     )
 
 
+# --- Ben (German, upper floor "OG"; the room of the product owner's screenshot) --
+BEN = "ben"
+BEN_FLOOR = "OG"
+BEN_DISPLAY = "device_shelly_ben"
+
+
+def _ben(entity_id: str, raw_name: str, *args: Any, **kwargs: Any) -> Any:
+    """An entity of Ben's room, named as collect_input() cleans HA's name."""
+    cls = kwargs.pop("cls", EntityInfo)
+    return cls(
+        entity_id, names.clean_name(raw_name, AREA_NAMES[BEN], BEN_FLOOR), BEN, *args, **kwargs
+    )
+
+
+BEN_RELAY = _ben("switch.ben_display_relais", "Relais", device_id=BEN_DISPLAY)
+BEN_ENTITIES = (
+    _ben("light.ben_licht", "Licht Ben OG", cls=LightInfo, dimmable=True),
+    _ben("light.ben_licht_eingang", "Licht Eingang Ben OG", cls=LightInfo, dimmable=False),
+    _ben("light.ben_bett", "Ben Bett Licht", cls=LightInfo, dimmable=True),
+    _ben(
+        "cover.ben_raffstore_nord", "Raffstore OG Ben Nord", "blind", COVER_OPEN_CLOSE_STOP_POSITION
+    ),
+    _ben(
+        "cover.ben_raffstore_west", "Raffstore OG Ben West", "blind", COVER_OPEN_CLOSE_STOP_POSITION
+    ),
+    # The display's own entities: no tiles, but the relay is pinned back.
+    _ben(
+        "light.ben_display_bildschirm",
+        "Bildschirm",
+        cls=LightInfo,
+        dimmable=True,
+        device_id=BEN_DISPLAY,
+    ),
+    _ben("switch.ben_display_mikrofon", "Mikrofon stummschalten", device_id=BEN_DISPLAY),
+    _ben("switch.ben_display_nachtmodus", "Nachtmodus", device_id=BEN_DISPLAY),
+    BEN_RELAY,
+)
+BEN_TEMPERATURE = _ben("sensor.ben_temperatur", "Temperatur Ben OG", "temperature")
+BEN_DISPLAY_TEMPERATURE = "sensor.ben_display_temperature"
+# The upstairs hallway thermostat, chosen in the options for Ben's Climate page.
+HALLWAY_HEATING = ClimateInfo(
+    "climate.og_flur_heizung",
+    "Heizung",
+    "flur_og",
+    None,
+    CLIMATE_TARGET_TEMP_PRESET_ONOFF,
+    hvac_modes=("off", "heat"),
+    preset_modes=("comfort", "eco"),
+)
+
+
+def ben_input(profile: Any | None = None, *, language: str = "de") -> Any:
+    """GeneratorInput for Ben's display with the room options set."""
+    display = sample_display(
+        _default_profile(profile),
+        entry_id="sample_ben",
+        name="Ben",
+        url_path="wall-ben",
+        area_id=BEN,
+        pages=("climate", "scenes"),
+        indoor_temperature=BEN_DISPLAY_TEMPERATURE,
+        indoor_humidity=None,
+        display_device_id=BEN_DISPLAY,
+        overrides=Overrides(
+            pinned=(BEN_RELAY.entity_id,),
+            climate_entities=(HALLWAY_HEATING.entity_id,),
+            temperature_entity=BEN_TEMPERATURE.entity_id,
+            max_home_tiles=6,
+        ),
+    )
+    display_sensor = EntityInfo(
+        BEN_DISPLAY_TEMPERATURE, "Temperatur", BEN, "temperature", device_id=BEN_DISPLAY
+    )
+    return GeneratorInput(
+        display=display,
+        area_name=AREA_NAMES[BEN],
+        area_entities=BEN_ENTITIES,
+        climates=(HALLWAY_HEATING,),
+        media_players=(),
+        scenes=(),
+        area_names=dict(AREA_NAMES),
+        area_sensors=(BEN_TEMPERATURE, display_sensor),
+        language=language,
+        weather_features=WEATHER_FEATURES,
+    )
+
+
 # Sample variants: name -> (input builder, keyword arguments).
 VARIANTS = {
     "entrance": (entrance_input, {}),
@@ -268,6 +359,7 @@ VARIANTS = {
     "empty": (empty_input, {}),
     "noforecast": (sample_input, {"weather_features": 0}),  # weather without forecasts
     "busy": (busy_input, {}),
+    "ben": (ben_input, {}),
 }
 # Extra goldens: <profile>@<variant>.json
 GOLDEN_VARIANTS = (
@@ -280,6 +372,7 @@ GOLDEN_VARIANTS = (
     ("tablet_portrait", "noforecast"),
     ("shelly_wall_display", "busy"),
     ("shelly_x2_landscape", "busy"),
+    ("shelly_wall_display", "ben"),
 )
 
 
@@ -456,6 +549,100 @@ STATES: dict[str, dict[str, Any]] = {
         last_triggered="2026-10-08T23:02:00+00:00",
     ),
 }
+
+
+def _ben_state(entity: Any, state: str, raw: str, **attributes: Any) -> tuple[str, dict[str, Any]]:
+    return entity.entity_id, _state(state, friendly_name=raw, **attributes)
+
+
+STATES.update(
+    dict(
+        (
+            _ben_state(
+                BEN_ENTITIES[0],
+                "on",
+                "Licht Ben OG",
+                brightness=153,
+                color_mode="brightness",
+                supported_color_modes=["brightness"],
+            ),
+            _ben_state(
+                BEN_ENTITIES[1],
+                "off",
+                "Licht Eingang Ben OG",
+                color_mode=None,
+                supported_color_modes=["onoff"],
+            ),
+            _ben_state(
+                BEN_ENTITIES[2],
+                "off",
+                "Ben Bett Licht",
+                color_mode=None,
+                supported_color_modes=["brightness"],
+            ),
+            _ben_state(
+                BEN_ENTITIES[3],
+                "closed",
+                "Raffstore OG Ben Nord",
+                device_class="blind",
+                current_position=0,
+                supported_features=COVER_OPEN_CLOSE_STOP_POSITION,
+            ),
+            _ben_state(
+                BEN_ENTITIES[4],
+                "open",
+                "Raffstore OG Ben West",
+                device_class="blind",
+                current_position=80,
+                supported_features=COVER_OPEN_CLOSE_STOP_POSITION,
+            ),
+            _ben_state(
+                BEN_ENTITIES[5],
+                "on",
+                "Shelly Ben Bildschirm",
+                color_mode="brightness",
+                supported_color_modes=["brightness"],
+                brightness=255,
+            ),
+            _ben_state(BEN_ENTITIES[6], "off", "Shelly Ben Mikrofon stummschalten"),
+            _ben_state(BEN_ENTITIES[7], "off", "Shelly Ben Nachtmodus"),
+            _ben_state(BEN_RELAY, "on", "Shelly Ben Relais"),
+            _ben_state(
+                BEN_TEMPERATURE,
+                "21.8",
+                "Temperatur Ben OG",
+                device_class="temperature",
+                state_class="measurement",
+                unit_of_measurement="°C",
+            ),
+            (
+                BEN_DISPLAY_TEMPERATURE,
+                _state(
+                    "24.6",
+                    friendly_name="Shelly Ben Temperatur",
+                    device_class="temperature",
+                    state_class="measurement",
+                    unit_of_measurement="°C",
+                ),
+            ),
+            _ben_state(
+                HALLWAY_HEATING,
+                "heat",
+                "Flur OG Heizung",
+                hvac_modes=["off", "heat"],
+                hvac_action="idle",
+                preset_modes=["comfort", "eco"],
+                preset_mode="eco",
+                current_temperature=20.0,
+                temperature=20.0,
+                min_temp=7,
+                max_temp=30,
+                target_temp_step=0.5,
+                supported_features=CLIMATE_TARGET_TEMP_PRESET_ONOFF,
+            ),
+        )
+    )
+)
 STATES.update(
     {
         lamp.entity_id: _state(

@@ -153,6 +153,12 @@ def test_resolve_profile() -> None:
     assert (custom.id, custom.width, custom.height, custom.measured) == ("custom", 800, 480, False)
     assert resolve_profile("shelly_xl", 1280, None) is PROFILES["shelly_xl"]
     assert resolve_profile("nope", None, None) is PROFILES["shelly_wall_display"]
+    # Custom without a usable size (none, zero, a bool from bad data) keeps its default.
+    assert resolve_profile("custom", None, None) is PROFILES["custom"]
+    assert resolve_profile("custom", 0, 480) is PROFILES["custom"]
+    assert resolve_profile("custom", True, 480) is PROFILES["custom"]
+    unknown = resolve_profile("nope", 640, 400)
+    assert (unknown.id, unknown.width, unknown.height) == ("custom", 640, 400)
 
 
 def test_profile_table() -> None:

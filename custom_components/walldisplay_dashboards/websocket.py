@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 import probatio
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from . import entities, generator, layout, repairs
@@ -26,6 +27,7 @@ from .const import (
     WS_LIST,
     WS_REPORT_VIEWPORT,
 )
+from .models import DashboardBudget, ViewportReport
 from .sensor import signal_viewport
 
 if TYPE_CHECKING:
@@ -61,7 +63,14 @@ def _get_entry(hass: HomeAssistant, entry_id: str) -> ConfigEntry | None:
 
 
 def _send_not_found(connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    connection.send_error(msg["id"], ERR_NOT_FOUND, f"Unknown wall display {msg['entry_id']}")
+    connection.send_error(
+        msg["id"],
+        ERR_NOT_FOUND,
+        f"Unknown wall display {msg['entry_id']}",
+        translation_key="display_not_found",
+        translation_domain=DOMAIN,
+        translation_placeholders={"entry_id": msg["entry_id"]},
+    )
 
 
 @websocket_api.websocket_command(
@@ -78,12 +87,21 @@ async def ws_generate(
     if (entry := _get_entry(hass, msg["entry_id"])) is None:
         _send_not_found(connection, msg)
         return
-    display = entities.display_config_from_entry(hass, entry)
-    data = entities.collect_input(hass, display)
-    connection.send_result(msg["id"], generator.build_dashboard(data))
+    try:
+        display = entities.display_config_from_entry(hass, entry)
+        data = entities.collect_input(hass, display)
+        dashboard = generator.build_dashboard(data)
+    except Exception as err:
+        _LOGGER.exception("Could not build the dashboard of %s", entry.title)
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="generate_failed",
+            translation_placeholders={"name": entry.title},
+        ) from err
+    connection.send_result(msg["id"], dashboard)
 
 
-def home_layout(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
+def home_layout(hass: HomeAssistant, entry: ConfigEntry) -> DashboardBudget:
     """Row budget per view, as the generator decided it.
 
     Returns ``{"rows", "footer", "views": {path: {"rows", "footer"}}}`` from
@@ -166,13 +184,15 @@ async def ws_report_viewport(
         "matches": matches,
     }
 
-    viewport = {
+    viewport: ViewportReport = {
         "width": width,
         "height": height,
         "dpr": msg["dpr"],
         "user_agent": msg["user_agent"],
         "device": msg.get("device"),
-        **result,
+        "profile_width": profile.width,
+        "profile_height": profile.height,
+        "matches": matches,
     }
     if (data := getattr(entry, "runtime_data", None)) is not None:
         data.viewport = viewport

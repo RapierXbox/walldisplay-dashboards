@@ -13,6 +13,7 @@ from homeassistant.components.lovelace.dashboard import (
     LovelaceStorage,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.walldisplay_dashboards import dashboards
 from custom_components.walldisplay_dashboards.const import STRATEGY_TYPE
@@ -292,3 +293,70 @@ async def test_remove_unknown_dashboard(
     await dashboards.async_remove_dashboard(hass, entry)
     await hass.async_block_till_done()
     assert (f"lovelace.{URL}" in hass_storage) is kept
+
+
+def test_is_own_strategy() -> None:
+    """Only a dict with our strategy type is ours."""
+    assert dashboards.is_own_strategy(dashboards.strategy_config("abc"))
+    assert not dashboards.is_own_strategy(None)
+    assert not dashboards.is_own_strategy(["strategy"])
+    assert not dashboards.is_own_strategy({"strategy": "custom:wall-display"})
+    assert not dashboards.is_own_strategy({"strategy": {"type": "original-states"}})
+
+
+def test_collection_search_survives_odd_handlers() -> None:
+    """Cycles, empty closure cells and long wrapper chains end the search without a match."""
+
+    def with_empty_cell():
+        def handler() -> object:
+            return later  # bound below, never reached: an empty cell
+
+        return handler
+        later = None
+
+    looped = with_empty_cell()
+    looped.__wrapped__ = looped
+    assert dashboards._collection_from_handler(looped) is None
+
+    class Wrapper:
+        def __init__(self, inner: object) -> None:
+            self.__wrapped__ = inner
+
+    chain: object = object()
+    for _ in range(100):
+        chain = Wrapper(chain)
+    assert dashboards._collection_from_handler(chain) is None
+
+
+async def test_find_collection_unrelated_handlers(hass: HomeAssistant) -> None:
+    """Handlers registered under the dashboard commands that hold no collection give None."""
+    handlers = {command: (lambda *args: None, None) for command in dashboards._COLLECTION_COMMANDS}
+    with patch.dict(hass.data, {"websocket_api": handlers}):
+        assert dashboards.find_dashboards_collection(hass) is None
+
+
+async def test_collection_item_without_config_object(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An item lovelace has no config object for is logged, not written to."""
+    entry = make_entry(hass)
+    await dashboards.async_ensure_dashboard(hass, entry)
+    hass.data[LOVELACE_DATA].dashboards.pop(URL)
+    with caplog.at_level(logging.WARNING):
+        assert await dashboards.async_ensure_dashboard(hass, entry) == "collection"
+    assert f"Dashboard {URL} has no lovelace config object" in caplog.text
+
+
+async def test_remove_fallback_storage_error(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A stored config that can't be deleted is logged; the panel is gone anyway."""
+    entry = make_entry(hass)
+    with patch.object(dashboards, "find_dashboards_collection", return_value=None):
+        await dashboards.async_ensure_dashboard(hass, entry)
+        with patch.object(
+            LovelaceStorage, "async_delete", side_effect=HomeAssistantError("read-only")
+        ):
+            await dashboards.async_remove_dashboard(hass, entry)
+    assert URL not in hass.data[DATA_PANELS]
+    assert f"Could not delete dashboard config {URL}: read-only" in caplog.text

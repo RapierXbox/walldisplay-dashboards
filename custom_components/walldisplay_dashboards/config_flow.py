@@ -15,8 +15,8 @@ from homeassistant.config_entries import (
     OptionsFlowWithReload,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     AreaSelector,
     BooleanSelector,
@@ -35,12 +35,16 @@ from homeassistant.util import slugify
 
 from .const import (
     CONF_AREA_ID,
+    CONF_CLIMATE_ENTITIES,
     CONF_DISPLAY_DEVICE_ID,
     CONF_DISPLAY_HOST,
     CONF_HEIGHT,
     CONF_HIDDEN,
+    CONF_HUMIDITY_ENTITY,
     CONF_IDLE_SECONDS,
+    CONF_INCLUDE_DISPLAY_ENTITIES,
     CONF_KIOSK,
+    CONF_MAX_HOME_TILES,
     CONF_NAME,
     CONF_PAGES,
     CONF_PINNED,
@@ -48,6 +52,7 @@ from .const import (
     CONF_ROLE,
     CONF_SCENE_BUTTONS,
     CONF_SHOW_IN_SIDEBAR,
+    CONF_TEMPERATURE_ENTITY,
     CONF_URL_PATH,
     CONF_WEATHER_ENTITY,
     CONF_WIDTH,
@@ -57,6 +62,7 @@ from .const import (
     DEFAULT_ROLE,
     DOMAIN,
     KIOSK_MODES,
+    MAX_HOME_TILES_LIMIT,
     OPTIONAL_PAGES,
     ROLES,
     TILE_DOMAIN_RANK,
@@ -91,6 +97,9 @@ def default_options() -> dict[str, Any]:
         CONF_PINNED: [],
         CONF_HIDDEN: [],
         CONF_SCENE_BUTTONS: [],
+        CONF_CLIMATE_ENTITIES: [],
+        CONF_MAX_HOME_TILES: 0,
+        CONF_INCLUDE_DISPLAY_ENTITIES: False,
         CONF_SHOW_IN_SIDEBAR: True,
     }
 
@@ -111,6 +120,10 @@ def _first_weather_entity(hass: HomeAssistant) -> str | None:
     """Return the first weather entity, if any."""
     entity_ids = sorted(hass.states.async_entity_ids("weather"))
     return entity_ids[0] if entity_ids else None
+
+
+def _sensor_selector(device_class: str) -> EntitySelector:
+    return EntitySelector(EntitySelectorConfig(domain="sensor", device_class=device_class))
 
 
 def _role_selector() -> SelectSelector:
@@ -196,6 +209,16 @@ def _clean_display_input(hass: HomeAssistant, user_input: Mapping[str, Any]) -> 
     return data
 
 
+def _area_error(hass: HomeAssistant, data: Mapping[str, Any]) -> str | None:
+    """Error key for the area field: missing, or deleted since it was picked."""
+    area_id = data.get(CONF_AREA_ID)
+    if not area_id:
+        return "area_required"
+    if ar.async_get(hass).async_get_area(area_id) is None:
+        return "area_not_found"
+    return None
+
+
 class WallDisplayConfigFlow(ConfigFlow, domain=DOMAIN):
     """Set up one wall display."""
 
@@ -221,7 +244,8 @@ class WallDisplayConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             name = str(user_input[CONF_NAME]).strip()
             url_path = url_path_for_name(name)
-            if not name or url_path == URL_PREFIX:
+            # slugify() turns a name without letters or digits into "unknown".
+            if not any(char.isalnum() for char in name):
                 errors[CONF_NAME] = "invalid_name"
             else:
                 await self.async_set_unique_id(url_path)
@@ -229,8 +253,8 @@ class WallDisplayConfigFlow(ConfigFlow, domain=DOMAIN):
                 if url_path in self.hass.data.get(DATA_PANELS, {}):
                     errors[CONF_NAME] = "url_path_taken"
             data = _clean_display_input(self.hass, user_input)
-            if CONF_AREA_ID not in data:
-                errors[CONF_AREA_ID] = "area_required"
+            if area_error := _area_error(self.hass, data):
+                errors[CONF_AREA_ID] = area_error
             if not errors:
                 self._data = {CONF_NAME: name, CONF_URL_PATH: url_path, **data}
                 self._role = user_input.get(CONF_ROLE, DEFAULT_ROLE)
@@ -273,7 +297,6 @@ class WallDisplayConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=self.add_suggested_values_to_schema(_size_schema(), suggested),
         )
 
-    @override
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -282,8 +305,8 @@ class WallDisplayConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             self._data = _clean_display_input(self.hass, user_input)
-            if CONF_AREA_ID not in self._data:
-                errors[CONF_AREA_ID] = "area_required"
+            if area_error := _area_error(self.hass, self._data):
+                errors[CONF_AREA_ID] = area_error
             elif self._data[CONF_PROFILE] == PROFILE_CUSTOM:
                 return await self.async_step_custom_size()
             else:
@@ -322,26 +345,8 @@ class WallDisplayConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_update_reload_and_abort(entry, data=data)
 
 
-def _area_entity_ids(hass: HomeAssistant, area_id: str | None) -> set[str]:
-    """Entity ids in an area, directly or through their device."""
-    if not area_id:
-        return set()
-    ent_reg = er.async_get(hass)
-    dev_reg = dr.async_get(hass)
-    entity_ids = {
-        entry.entity_id
-        for entry in er.async_entries_for_area(ent_reg, area_id)
-        if not entry.disabled_by
-    }
-    for device in dr.async_entries_for_area(dev_reg, area_id):
-        for entry in er.async_entries_for_device(ent_reg, device.id):
-            if entry.area_id is None and not entry.disabled_by:
-                entity_ids.add(entry.entity_id)
-    return {e for e in entity_ids if e.split(".", 1)[0] in TILE_DOMAIN_RANK}
-
-
 class WallDisplayOptionsFlow(OptionsFlowWithReload):
-    """Favourite scenes, role, pages, idle timeout, kiosk mode and tile overrides."""
+    """Favourite scenes, role, pages, idle timeout, kiosk mode, tile and climate overrides."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage the options."""
@@ -352,37 +357,40 @@ class WallDisplayOptionsFlow(OptionsFlowWithReload):
                 errors[CONF_SCENE_BUTTONS] = "too_many_scene_buttons"
             else:
                 pages = set(user_input.get(CONF_PAGES, []))
-                return self.async_create_entry(
-                    data={
-                        CONF_ROLE: user_input.get(CONF_ROLE, DEFAULT_ROLE),
-                        CONF_PAGES: [p for p in OPTIONAL_PAGES if p in pages],
-                        CONF_IDLE_SECONDS: int(
-                            user_input.get(CONF_IDLE_SECONDS, DEFAULT_IDLE_SECONDS)
-                        ),
-                        CONF_KIOSK: user_input.get(CONF_KIOSK, DEFAULT_KIOSK),
-                        CONF_PINNED: list(user_input.get(CONF_PINNED, [])),
-                        CONF_HIDDEN: list(user_input.get(CONF_HIDDEN, [])),
-                        CONF_SCENE_BUTTONS: scene_buttons,
-                        CONF_SHOW_IN_SIDEBAR: bool(user_input.get(CONF_SHOW_IN_SIDEBAR, True)),
-                    }
-                )
+                options: dict[str, Any] = {
+                    CONF_ROLE: user_input.get(CONF_ROLE, DEFAULT_ROLE),
+                    CONF_PAGES: [p for p in OPTIONAL_PAGES if p in pages],
+                    CONF_IDLE_SECONDS: int(user_input.get(CONF_IDLE_SECONDS, DEFAULT_IDLE_SECONDS)),
+                    CONF_KIOSK: user_input.get(CONF_KIOSK, DEFAULT_KIOSK),
+                    CONF_PINNED: list(user_input.get(CONF_PINNED, [])),
+                    CONF_HIDDEN: list(user_input.get(CONF_HIDDEN, [])),
+                    CONF_SCENE_BUTTONS: scene_buttons,
+                    CONF_CLIMATE_ENTITIES: list(user_input.get(CONF_CLIMATE_ENTITIES, [])),
+                    CONF_MAX_HOME_TILES: int(user_input.get(CONF_MAX_HOME_TILES, 0)),
+                    CONF_INCLUDE_DISPLAY_ENTITIES: bool(
+                        user_input.get(CONF_INCLUDE_DISPLAY_ENTITIES, False)
+                    ),
+                    CONF_SHOW_IN_SIDEBAR: bool(user_input.get(CONF_SHOW_IN_SIDEBAR, True)),
+                }
+                # Optional sensors: a cleared field is left out (automatic).
+                for key in (CONF_TEMPERATURE_ENTITY, CONF_HUMIDITY_ENTITY):
+                    if value := user_input.get(key):
+                        options[key] = value
+                return self.async_create_entry(data=options)
 
         current = {**default_options(), **self.config_entry.options}
         suggested = user_input if user_input is not None else current
         return self.async_show_form(
             step_id="init",
-            data_schema=self.add_suggested_values_to_schema(self._schema(current), suggested),
+            data_schema=self.add_suggested_values_to_schema(self._schema(), suggested),
             errors=errors,
         )
 
-    def _schema(self, current: Mapping[str, Any]) -> probatio.Schema:
+    def _schema(self) -> probatio.Schema:
         """Build the options schema."""
+        # Pins may come from any room: every tile domain entity is offered, so
+        # entities pinned earlier stay selectable.
         pinned_config = EntitySelectorConfig(domain=list(TILE_DOMAIN_RANK), multiple=True)
-        if area_entities := _area_entity_ids(self.hass, self.config_entry.data.get(CONF_AREA_ID)):
-            # Offer the area's entities, plus anything already pinned elsewhere.
-            pinned_config["include_entities"] = sorted(
-                area_entities | set(current.get(CONF_PINNED, []))
-            )
         return probatio.Schema(
             {
                 probatio.Optional(CONF_SCENE_BUTTONS): EntitySelector(
@@ -415,6 +423,18 @@ class WallDisplayOptionsFlow(OptionsFlowWithReload):
                 ),
                 probatio.Optional(CONF_PINNED): EntitySelector(pinned_config),
                 probatio.Optional(CONF_HIDDEN): EntitySelector(EntitySelectorConfig(multiple=True)),
+                probatio.Required(CONF_MAX_HOME_TILES, default=0): NumberSelector(
+                    NumberSelectorConfig(
+                        min=0, max=MAX_HOME_TILES_LIMIT, step=1, mode=NumberSelectorMode.BOX
+                    )
+                ),
+                probatio.Required(CONF_INCLUDE_DISPLAY_ENTITIES, default=False): BooleanSelector(),
+                # Climate entities may come from any room, like pins.
+                probatio.Optional(CONF_CLIMATE_ENTITIES): EntitySelector(
+                    EntitySelectorConfig(domain="climate", multiple=True)
+                ),
+                probatio.Optional(CONF_TEMPERATURE_ENTITY): _sensor_selector("temperature"),
+                probatio.Optional(CONF_HUMIDITY_ENTITY): _sensor_selector("humidity"),
                 probatio.Required(CONF_SHOW_IN_SIDEBAR): BooleanSelector(),
             }
         )

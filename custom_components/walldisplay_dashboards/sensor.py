@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import CONF_NAME, DOMAIN, VERSION
+from .const import DOMAIN
+from .models import ViewportReport
 
 if TYPE_CHECKING:
     from . import WallDisplayConfigEntry
 
+# Push only: the sensor never polls or calls out, so nothing to throttle.
 PARALLEL_UPDATES = 0
 
 VIEWPORT_ATTRIBUTES = (
@@ -36,13 +39,22 @@ def signal_viewport(entry_id: str) -> str:
     return f"{DOMAIN}_viewport_{entry_id}"
 
 
-def format_viewport(viewport: dict[str, Any] | None) -> str | None:
+def format_viewport(viewport: Mapping[str, Any] | None) -> str | None:
     """Return "WxH@dpr" for a viewport report."""
     if not viewport or viewport.get("width") is None or viewport.get("height") is None:
         return None
     dpr = viewport.get("dpr")
     dpr_text = f"{float(dpr):g}" if dpr is not None else "1"
     return f"{int(viewport['width'])}x{int(viewport['height'])}@{dpr_text}"
+
+
+def _restored_viewport(attributes: Mapping[str, Any]) -> ViewportReport:
+    """The last report, from the restored state attributes.
+
+    This sensor wrote those attributes from a ViewportReport, so they have its
+    keys and types (JSON round trip only).
+    """
+    return cast(ViewportReport, {key: attributes.get(key) for key in VIEWPORT_ATTRIBUTES})
 
 
 async def async_setup_entry(
@@ -60,24 +72,19 @@ class ViewportSensor(RestoreEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "viewport"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_icon = "mdi:monitor-screenshot"
     _attr_should_poll = False
+    # Enabled by default on purpose: it is how the user checks the display size,
+    # and it only changes when the display reports, so it is not noisy.
 
     def __init__(self, entry: WallDisplayConfigEntry) -> None:
         """Initialise from the config entry."""
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_viewport"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.data.get(CONF_NAME) or entry.title,
-            manufacturer="Wall Display Dashboards",
-            model="Wall display dashboard",
-            sw_version=VERSION,
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        # The device itself is created in __init__.async_update_device.
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
 
     @property
-    def _viewport(self) -> dict[str, Any] | None:
+    def _viewport(self) -> ViewportReport | None:
         data = getattr(self._entry, "runtime_data", None)
         return getattr(data, "viewport", None)
 
@@ -89,7 +96,7 @@ class ViewportSensor(RestoreEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the raw report and the comparison with the profile."""
-        viewport = self._viewport or {}
+        viewport: Mapping[str, Any] = self._viewport or {}
         return {key: viewport.get(key) for key in VIEWPORT_ATTRIBUTES}
 
     async def async_added_to_hass(self) -> None:
@@ -99,7 +106,7 @@ class ViewportSensor(RestoreEntity, SensorEntity):
         if data is not None and data.viewport is None:
             last = await self.async_get_last_state()
             if last is not None and last.attributes.get("width") is not None:
-                data.viewport = {key: last.attributes.get(key) for key in VIEWPORT_ATTRIBUTES}
+                data.viewport = _restored_viewport(last.attributes)
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass, signal_viewport(self._entry.entry_id), self._handle_report

@@ -12,7 +12,9 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import EVENT_CORE_CONFIG_UPDATE, EVENT_LOVELACE_UPDATED, Platform
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.area_registry import EVENT_AREA_REGISTRY_UPDATED
 from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.device_registry import EVENT_DEVICE_REGISTRY_UPDATED
@@ -20,18 +22,25 @@ from homeassistant.helpers.entity_registry import EVENT_ENTITY_REGISTRY_UPDATED
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.util.hass_dict import HassKey
 
 from . import dashboards, display_link, entities, repairs
 from .const import (
     CONF_DISPLAY_DEVICE_ID,
     CONF_DISPLAY_HOST,
+    CONF_HEIGHT,
+    CONF_NAME,
+    CONF_PROFILE,
     CONF_URL_PATH,
+    CONF_WIDTH,
     DOMAIN,
     FRONTEND_SCRIPT,
     FRONTEND_URL_BASE,
     VERSION,
 )
 from .generator.room import is_empty_room
+from .models import ViewportReport
+from .profiles import DEFAULT_PROFILE, resolve_profile
 from .websocket import async_register_commands
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,6 +52,7 @@ FRONTEND_DIR = Path(__file__).parent / "frontend"
 REGISTRY_DEBOUNCE_SECONDS = 2.0
 PUSH_STORE_VERSION = 1
 PUSH_STORE_KEY = f"{DOMAIN}.pushed"
+MANUFACTURER = "Wall Display Dashboards"
 
 
 @dataclass
@@ -50,7 +60,7 @@ class WallDisplayData:
     """Runtime data of one wall display entry."""
 
     dashboard_mode: str = ""
-    viewport: dict[str, Any] | None = None
+    viewport: ViewportReport | None = None
     url_path: str = ""
     push_method: str | None = None
 
@@ -66,12 +76,16 @@ class _DomainData:
     pushed: dict[str, dict[str, Any]] | None = None
     set_up_entries: set[str] = field(default_factory=set)
     unsub_registry: list[CALLBACK_TYPE] = field(default_factory=list)
-    debouncer: Debouncer | None = None
+    debouncer: Debouncer[None] | None = None
+    registered: bool = False  # static path, frontend module and websocket commands
+
+
+DATA_KEY: HassKey[_DomainData] = HassKey(DOMAIN)
 
 
 def _domain_data(hass: HomeAssistant) -> _DomainData:
-    if (data := hass.data.get(DOMAIN)) is None:
-        data = hass.data[DOMAIN] = _DomainData(
+    if (data := hass.data.get(DATA_KEY)) is None:
+        data = hass.data[DATA_KEY] = _DomainData(
             push_store=Store(hass, PUSH_STORE_VERSION, PUSH_STORE_KEY)
         )
     return data
@@ -79,10 +93,10 @@ def _domain_data(hass: HomeAssistant) -> _DomainData:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Serve the frontend module and register the websocket commands (once)."""
-    _domain_data(hass)
-    if hass.data.get(f"{DOMAIN}_registered"):
+    domain = _domain_data(hass)
+    if domain.registered:
         return True
-    hass.data[f"{DOMAIN}_registered"] = True
+    domain.registered = True
 
     await hass.http.async_register_static_paths(
         [StaticPathConfig(FRONTEND_URL_BASE, str(FRONTEND_DIR), cache_headers=True)]
@@ -168,7 +182,7 @@ def _async_start_registry_listener(hass: HomeAssistant) -> None:
     )
 
     @callback
-    def _on_registry_update(event: Event) -> None:
+    def _on_registry_update(event: Event[Any]) -> None:
         debouncer.async_schedule_call()
 
     @callback
@@ -180,14 +194,9 @@ def _async_start_registry_listener(hass: HomeAssistant) -> None:
     # Persons are registered entities, so adding or removing one (entrance role)
     # already arrives as an entity registry update; their state is live in the tiles.
     domain.unsub_registry = [
-        *(
-            hass.bus.async_listen(event_type, _on_registry_update)
-            for event_type in (
-                EVENT_AREA_REGISTRY_UPDATED,
-                EVENT_ENTITY_REGISTRY_UPDATED,
-                EVENT_DEVICE_REGISTRY_UPDATED,
-            )
-        ),
+        hass.bus.async_listen(EVENT_AREA_REGISTRY_UPDATED, _on_registry_update),
+        hass.bus.async_listen(EVENT_ENTITY_REGISTRY_UPDATED, _on_registry_update),
+        hass.bus.async_listen(EVENT_DEVICE_REGISTRY_UPDATED, _on_registry_update),
         hass.bus.async_listen(EVENT_CORE_CONFIG_UPDATE, _on_core_config_update),
     ]
 
@@ -203,6 +212,39 @@ def _async_stop_registry_listener(hass: HomeAssistant) -> None:
         domain.debouncer = None
 
 
+@callback
+def async_update_device(hass: HomeAssistant, entry: ConfigEntry) -> dr.DeviceEntry:
+    """Create or update the entry's service device and drop any other device.
+
+    One device per entry, identified by the entry id, so it never changes and
+    goes away with the entry. Anything else still linked to the entry (a device
+    that would otherwise be orphaned) is detached from it.
+    """
+    url_path: str = entry.data[CONF_URL_PATH]
+    profile = resolve_profile(
+        entry.data.get(CONF_PROFILE, DEFAULT_PROFILE),
+        entry.data.get(CONF_WIDTH),
+        entry.data.get(CONF_HEIGHT),
+    )
+    registry = dr.async_get(hass)
+    device = registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, entry.entry_id)},
+        entry_type=dr.DeviceEntryType.SERVICE,
+        name=entry.data.get(CONF_NAME) or entry.title,
+        manufacturer=MANUFACTURER,
+        model=profile.name,
+        model_id=profile.id,
+        sw_version=VERSION,
+        # homeassistant:// links open the dashboard inside the frontend.
+        configuration_url=f"homeassistant://{url_path}",
+    )
+    for other in dr.async_entries_for_config_entry(registry, entry.entry_id):
+        if other.id != device.id:
+            registry.async_update_device(other.id, remove_config_entry_id=entry.entry_id)
+    return device
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: WallDisplayConfigEntry) -> bool:
     """Set up one wall display."""
     domain = _domain_data(hass)
@@ -213,8 +255,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: WallDisplayConfigEntry) 
     entry.runtime_data.dashboard_mode = await dashboards.async_ensure_dashboard(hass, entry)
 
     # Never point the display at a url_path that belongs to someone else.
-    if entry.runtime_data.dashboard_mode != dashboards.MODE_FAILED:
-        await _async_push_if_needed(hass, entry)
+    if entry.runtime_data.dashboard_mode == dashboards.MODE_FAILED:
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="url_path_taken",
+            translation_placeholders={"url_path": url_path},
+        )
+    await _async_push_if_needed(hass, entry)
+
+    async_update_device(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_start_registry_listener(hass)

@@ -1,0 +1,7 @@
+# Test requirements (Python 3.14, Linux; Home Assistant does not run on Windows).
+# pytest-homeassistant-custom-component 0.13.371 pins homeassistant==2026.10.0,
+# the minimum version in hacs.json. It also brings pytest-cov and pytest-xdist.
+pytest-homeassistant-custom-component==0.13.371
+pytest-cov
+pytest-xdist
+mypy==2.4.0

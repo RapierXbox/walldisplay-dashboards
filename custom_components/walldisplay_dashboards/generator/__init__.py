@@ -23,7 +23,7 @@ from ..layout import (
     tile_max_columns,
     tile_max_rows,
 )
-from ..models import EntityInfo, GeneratorInput, Grid
+from ..models import DashboardBudget, EntityInfo, GeneratorInput, Grid, ViewBudget
 from . import cards
 from .cards import Card
 from .climate import climate_plan
@@ -180,14 +180,16 @@ def build_dashboard(data: GeneratorInput) -> dict[str, Any]:
         grid, pages, overflow = _build_pages(data, footer=False)
     nav_pages = [page for page, _ in pages]
     has_footer = len(nav_pages) >= 2
-    live = {
+    live: dict[str, str] = {
         page: entity.entity_id
         for page in (PAGE_CLIMATE, PAGE_MEDIA)
         if page in nav_pages and (entity := primary(data, page)) is not None
     }
 
     def footer() -> dict[str, Any]:
-        return nav_footer(nav_pages, profile, language, live)
+        return nav_footer(
+            nav_pages, profile, language, live, data.display.overrides.temperature_entity
+        )
 
     views = [
         _view(page, page_cards, grid, footer() if has_footer else None, language)
@@ -211,7 +213,7 @@ def build_dashboard(data: GeneratorInput) -> dict[str, Any]:
 
 def dashboard_budget(
     data: GeneratorInput, dashboard: dict[str, Any] | None = None
-) -> dict[str, Any]:
+) -> DashboardBudget:
     """Row budget for walldisplay.js (websocket `list`), from the built dashboard.
 
     `rows`/`footer` describe Home; `views` has the same per view path, because
@@ -219,9 +221,9 @@ def dashboard_budget(
     """
     dashboard = dashboard if dashboard is not None else build_dashboard(data)
     profile = data.display.profile
-    views = {}
+    views: dict[str, ViewBudget] = {}
     for view in dashboard["views"]:
         footer = "footer" in view
         views[view["path"]] = {"rows": compute_grid(profile, footer=footer).rows, "footer": footer}
-    home = views.get(PAGE_HOME, {"rows": compute_grid(profile).rows, "footer": True})
+    home = views.get(PAGE_HOME) or ViewBudget(rows=compute_grid(profile).rows, footer=True)
     return {"rows": home["rows"], "footer": home["footer"], "views": views}

@@ -42,6 +42,11 @@ CONF_SCENE_BUTTONS: Final = "scene_buttons"
 CONF_SHOW_IN_SIDEBAR: Final = "show_in_sidebar"
 CONF_DISPLAY_HOST: Final = "display_host"
 CONF_ROLE: Final = "role"
+CONF_CLIMATE_ENTITIES: Final = "climate_entities"  # Climate page, from any room
+CONF_TEMPERATURE_ENTITY: Final = "temperature_entity"  # room temperature sensor
+CONF_HUMIDITY_ENTITY: Final = "humidity_entity"  # room humidity sensor
+CONF_MAX_HOME_TILES: Final = "max_home_tiles"  # 0 = as many as fit
+CONF_INCLUDE_DISPLAY_ENTITIES: Final = "include_display_entities"
 
 # Display role (options). Entrance adds house-wide status and leave-home actions.
 ROLE_ROOM: Final = "room"
@@ -74,6 +79,7 @@ KIOSK_MODES: Final = (KIOSK_BUILTIN, KIOSK_KIOSK_MODE, KIOSK_OFF)
 
 DEFAULT_IDLE_SECONDS: Final = 60
 DEFAULT_KIOSK: Final = KIOSK_BUILTIN
+MAX_HOME_TILES_LIMIT: Final = 24  # max_home_tiles option: 0 (automatic) up to this
 
 # Home tiles are filled from the area in this domain order.
 TILE_DOMAIN_RANK: Final = (

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..const import NAV
+from ..const import NAV, PAGE_CLIMATE
 from ..models import Profile
 from .labels import nav_label
 
@@ -19,11 +19,14 @@ def nav_footer(
     profile: Profile,
     language: str = "en",
     entities: dict[str, str] | None = None,
+    temperature_entity: str | None = None,
 ) -> dict[str, Any]:
     """View footer: one pill item per page, with the page's live entity if any.
 
     Paths are relative view paths. The Climate item carries the primary
     climate (the pill shows its temperature), the Media item the primary player.
+    A room temperature sensor chosen in the options goes on the Climate item
+    as `temperature_entity`; the pill then shows that sensor instead.
     """
     items = []
     for page in pages:
@@ -34,6 +37,8 @@ def nav_footer(
         }
         if entities and (entity_id := entities.get(page)):
             item["entity"] = entity_id
+        if page == PAGE_CLIMATE and temperature_entity:
+            item["temperature_entity"] = temperature_entity
         items.append(item)
     width = min(len(items) * ITEM_PX + PADDING_PX, profile.width - SCREEN_MARGIN_PX)
     return {"card": {"type": NAV_CARD, "items": items}, "max_width": width}

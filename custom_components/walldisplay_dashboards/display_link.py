@@ -173,7 +173,9 @@ def _base_url(host: str) -> str:
     return f"http://{host}"
 
 
-async def _http(hass: HomeAssistant, method: str, url: str, payload: dict | None = None) -> bool:
+async def _http(
+    hass: HomeAssistant, method: str, url: str, payload: dict[str, Any] | None = None
+) -> bool:
     session = async_get_clientsession(hass)
     try:
         # No redirects: only ever talk to the host the user configured.

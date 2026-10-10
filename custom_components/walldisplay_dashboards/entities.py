@@ -9,20 +9,26 @@ from homeassistant.core import HomeAssistant, State, split_entity_id
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import floor_registry as fr
 
 from .const import (
     CONF_AREA_ID,
+    CONF_CLIMATE_ENTITIES,
     CONF_DISPLAY_DEVICE_ID,
     CONF_HEIGHT,
     CONF_HIDDEN,
+    CONF_HUMIDITY_ENTITY,
     CONF_IDLE_SECONDS,
+    CONF_INCLUDE_DISPLAY_ENTITIES,
     CONF_KIOSK,
+    CONF_MAX_HOME_TILES,
     CONF_NAME,
     CONF_PAGES,
     CONF_PINNED,
     CONF_PROFILE,
     CONF_ROLE,
     CONF_SCENE_BUTTONS,
+    CONF_TEMPERATURE_ENTITY,
     CONF_URL_PATH,
     CONF_WEATHER_ENTITY,
     CONF_WIDTH,
@@ -30,6 +36,7 @@ from .const import (
     DEFAULT_KIOSK,
     DEFAULT_PAGES,
     DEFAULT_ROLE,
+    MAX_HOME_TILES_LIMIT,
     OPTIONAL_PAGES,
     ROLE_ENTRANCE,
     ROLES,
@@ -42,27 +49,16 @@ from .generator.home import rank_entities
 from .generator.info import ClimateInfo, LightInfo
 from .generator.room import natural_key
 from .models import DisplayConfig, EntityInfo, GeneratorInput, Overrides
+from .names import clean_name
 from .profiles import DEFAULT_PROFILE, resolve_profile
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
-NAME_SEPARATORS = " -:_·–"
 MAX_SCENE_BUTTONS = 2
 OPENING_CLASSES = ("door", "window", "garage_door", "opening")
 # Leave-home actions for the entrance role, matched on entity id or name.
 ALL_OFF_NAMES = frozenset({"all off", "all_off", "alles aus", "alles_aus"})
-
-
-def strip_area_prefix(name: str, area_name: str | None) -> str:
-    """'Kitchen Ceiling' in the Kitchen -> 'Ceiling'. Keeps names that are only the area."""
-    if not area_name or not name.casefold().startswith(area_name.casefold()):
-        return name
-    rest = name[len(area_name) :]
-    if rest[:1] not in tuple(NAME_SEPARATORS):
-        return name  # "Kitchenette" is not "Kitchen" + "ette"
-    rest = rest.lstrip(NAME_SEPARATORS)
-    return rest[:1].upper() + rest[1:] if rest else name
 
 
 def _str_list(value: Any) -> tuple[str, ...]:
@@ -71,6 +67,18 @@ def _str_list(value: Any) -> tuple[str, ...]:
     if isinstance(value, (list, tuple)):
         return tuple(v for v in value if isinstance(v, str))
     return ()
+
+
+def _entity_option(value: Any) -> str | None:
+    """A single entity id option; anything else (cleared, malformed) is unset."""
+    return value if isinstance(value, str) and value else None
+
+
+def _tile_limit(value: Any) -> int:
+    """max_home_tiles: 0 (automatic) up to MAX_HOME_TILES_LIMIT."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0
+    return max(0, min(MAX_HOME_TILES_LIMIT, int(value)))
 
 
 def _device_area(hass: HomeAssistant, device_id: str | None) -> str | None:
@@ -120,7 +128,13 @@ def display_config_from_entry(hass: HomeAssistant, entry: ConfigEntry) -> Displa
             pinned=_str_list(options.get(CONF_PINNED)),
             hidden=_str_list(options.get(CONF_HIDDEN)),
             scene_buttons=_str_list(options.get(CONF_SCENE_BUTTONS))[:MAX_SCENE_BUTTONS],
+            climate_entities=_str_list(options.get(CONF_CLIMATE_ENTITIES)),
+            temperature_entity=_entity_option(options.get(CONF_TEMPERATURE_ENTITY)),
+            humidity_entity=_entity_option(options.get(CONF_HUMIDITY_ENTITY)),
+            max_home_tiles=_tile_limit(options.get(CONF_MAX_HOME_TILES)),
+            include_display_entities=bool(options.get(CONF_INCLUDE_DISPLAY_ENTITIES, False)),
         ),
+        display_device_id=data.get(CONF_DISPLAY_DEVICE_ID) or None,
     )
 
 
@@ -131,7 +145,14 @@ class _Lookup:
         self.hass = hass
         self.entities = er.async_get(hass)
         self.devices = dr.async_get(hass)
-        self.area_names = {area.id: area.name for area in ar.async_get(hass).async_list_areas()}
+        areas = ar.async_get(hass).async_list_areas()
+        floors = fr.async_get(hass)
+        self.area_names = {area.id: area.name for area in areas}
+        self.floor_names = {
+            area.id: floor.name
+            for area in areas
+            if area.floor_id and (floor := floors.async_get_floor(area.floor_id)) is not None
+        }
 
     def area_of(self, entry: er.RegistryEntry | None) -> str | None:
         """Entity's own area, else its device's area."""
@@ -176,12 +197,18 @@ class _Lookup:
             features = entry.supported_features if entry else 0
         fields: dict[str, Any] = {
             "entity_id": entity_id,
-            "name": strip_area_prefix(str(raw), self.area_names.get(area_id or "")),
+            # The room and floor are on the dashboard already: "Licht Ben OG" -> "Licht".
+            "name": clean_name(
+                str(raw),
+                self.area_names.get(area_id or ""),
+                self.floor_names.get(area_id or ""),
+            ),
             "area_id": area_id,
             "device_class": str(device_class) if device_class else None,
             "supported_features": features or 0,
             "icon": (entry.icon or entry.original_icon if entry else None)
             or state.attributes.get("icon"),
+            "device_id": entry.device_id if entry else None,
         }
         if state.domain == "climate":
             return ClimateInfo(
@@ -199,7 +226,8 @@ def collect_input(hass: HomeAssistant, display: DisplayConfig) -> GeneratorInput
     """Gather everything build_dashboard() needs for one display.
 
     Pages are room-scoped, so climates, media players, scenes and sensors are
-    the display's area only (the generator filters by area again). The
+    the display's area only (the generator filters by area again). Pinned
+    entities and the climate entities of the options come from any room. The
     entrance role adds house-wide people, counts, locks/alarms and leave-home
     actions.
     """
@@ -231,6 +259,12 @@ def collect_input(hass: HomeAssistant, display: DisplayConfig) -> GeneratorInput
     def by_name(entities: list[EntityInfo]) -> tuple[EntityInfo, ...]:
         return tuple(sorted(entities, key=lambda e: (natural_key(e.name), e.entity_id)))
 
+    climates = in_area("climate")
+    chosen = [e for e in display.overrides.climate_entities if e.startswith("climate.")]
+    for entity_id in dict.fromkeys(chosen).keys() - {e.entity_id for e in climates}:
+        if (info := lookup.info(entity_id)) is not None:
+            climates.append(info)
+
     area = ar.async_get(hass).async_get_area(area_id) if area_id else None
     sensors = [e for e in in_area("sensor") if e.device_class in ("temperature", "humidity")]
     weather = hass.states.get(display.weather_entity) if display.weather_entity else None
@@ -256,7 +290,7 @@ def collect_input(hass: HomeAssistant, display: DisplayConfig) -> GeneratorInput
         display=display,
         area_name=lookup.area_names.get(area_id or "", display.name),
         area_entities=tuple(rank_entities(area_entities, display.overrides)),
-        climates=by_name(in_area("climate")),
+        climates=by_name(climates),
         media_players=by_name(in_area("media_player")),
         scenes=by_name(in_area("scene", "script")),
         area_names=lookup.area_names,

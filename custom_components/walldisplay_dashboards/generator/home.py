@@ -3,8 +3,8 @@
 Tiles grow to fill the space up to a cap (6 columns x 2 rows on square and
 portrait, 3 rows on landscape); rows left over go to the status area (larger
 clock, room card, forecast), never to giant tiles. Every full tile line adds
-up to the section width. Items that don't fit (or past 12) end in a
-"+N more" slot that opens the More view.
+up to the section width. Items that don't fit (or past 12, or past the
+max_home_tiles option) end in a "+N more" slot that opens the More view.
 """
 
 from __future__ import annotations
@@ -30,9 +30,12 @@ from .room import (
     NaturalKey,
     area_controls,
     home_excluded_domains,
+    is_display_own,
     is_entrance,
     leave_home_actions,
     natural_key,
+    on_own_page,
+    room_card_sensors,
 )
 
 MAX_HOME_TILES = 12
@@ -74,7 +77,8 @@ def home_items(data: GeneratorInput) -> list[EntityInfo]:
     """Entities for Home tiles, in slot order.
 
     Entrance: people, house-wide locks/alarms (read-only), leave-home actions,
-    then the room. Domains that have their own page are left out.
+    then the room. Entities controlled on their own page and the display
+    device's own entities are left out.
     """
     domains = home_excluded_domains(data)
     hidden = set(data.display.overrides.hidden)
@@ -88,7 +92,7 @@ def home_items(data: GeneratorInput) -> list[EntityInfo]:
             if entity.entity_id not in hidden:
                 result.setdefault(entity.entity_id, entity)
     for entity in rank_entities(data.area_entities, data.display.overrides):
-        if entity.domain not in domains:
+        if not on_own_page(data, entity, domains) and not is_display_own(data, entity):
             result.setdefault(entity.entity_id, entity)
     return list(result.values())
 
@@ -138,9 +142,18 @@ def _forecast(data: GeneratorInput) -> Card | None:
 
 
 def _room_card(data: GeneratorInput) -> Card | None:
+    """HA's area card, showing the room sensors; the display's own entities stay out
+    of its room controls (a screen light is not a room light)."""
     if not data.display.area_id:
         return None
-    return cards.area_card(data.display.area_id, area_controls(data))
+    sensor_classes, exclude = room_card_sensors(data)
+    exclude += [e.entity_id for e in data.area_entities if is_display_own(data, e)]
+    return cards.area_card(
+        data.display.area_id,
+        area_controls(data),
+        sensor_classes=sensor_classes,
+        exclude_entities=sorted(set(exclude)),
+    )
 
 
 def _status_square(data: GeneratorInput, grid: Grid, rows: int) -> list[Card]:
@@ -261,7 +274,7 @@ def home_plan(data: GeneratorInput, grid: Grid) -> HomePlan:
         area_columns, base = grid.card_columns, (1 if grid.rows >= 2 or not slots else 0)
 
     fill = fill_tiles(
-        min(len(slots), MAX_HOME_TILES),
+        min(len(slots), data.display.overrides.max_home_tiles or MAX_HOME_TILES),
         area_columns,
         grid.rows - base,
         column_px,

@@ -7,9 +7,35 @@ generator can be tested and previewed without a running Home Assistant.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, TypedDict
 
 Orientation = Literal["square", "landscape", "portrait"]
+
+
+class ViewBudget(TypedDict):
+    """Grid rows of one view and whether it has the nav pill."""
+
+    rows: int
+    footer: bool
+
+
+class DashboardBudget(ViewBudget):
+    """Row budget for walldisplay.js: Home's, plus every view's by path."""
+
+    views: dict[str, ViewBudget]
+
+
+class ViewportReport(TypedDict):
+    """What a display last reported over websocket, compared with its profile."""
+
+    width: int
+    height: int
+    dpr: float
+    user_agent: str
+    device: str | None
+    profile_width: int
+    profile_height: int
+    matches: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +83,7 @@ class EntityInfo:
     device_class: str | None = None
     supported_features: int = 0
     icon: str | None = None  # the entity's own icon (registry or state), if any
+    device_id: str | None = None  # registry device, to leave out the display's own entities
 
     @property
     def domain(self) -> str:
@@ -67,9 +94,14 @@ class EntityInfo:
 class Overrides:
     """User adjustments from the options flow."""
 
-    pinned: tuple[str, ...] = ()  # shown first, in this order
+    pinned: tuple[str, ...] = ()  # shown first, in this order; from any room
     hidden: tuple[str, ...] = ()  # never shown
     scene_buttons: tuple[str, ...] = ()  # favourite scenes/scripts: first on Scenes
+    climate_entities: tuple[str, ...] = ()  # Climate page instead of the room's; any room
+    temperature_entity: str | None = None  # room temperature sensor, before any other
+    humidity_entity: str | None = None  # room humidity sensor, before any other
+    max_home_tiles: int = 0  # Home tile slots incl. "+N more"; 0 = as many as fit
+    include_display_entities: bool = False  # the display device's own entities as tiles
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,6 +120,7 @@ class DisplayConfig:
     idle_seconds: int = 60
     kiosk: str = "builtin"
     overrides: Overrides = field(default_factory=Overrides)
+    display_device_id: str | None = None  # its own entities are not tiles (see Overrides)
 
 
 @dataclass(frozen=True, slots=True)

@@ -57,7 +57,8 @@
     "error": {
       "invalid_name": "Enter a name with at least one letter or digit.",
       "url_path_taken": "A dashboard or panel with this address already exists. Choose another name.",
-      "area_required": "Choose an area, or a display device that has an area."
+      "area_required": "Choose an area, or a display device that has an area.",
+      "area_not_found": "This area no longer exists. Choose another one."
     },
     "abort": {
       "already_configured": "A wall display with this name is already set up.",
@@ -76,6 +77,11 @@
           "kiosk": "Kiosk mode",
           "pinned": "Pinned tiles",
           "hidden": "Hidden entities",
+          "max_home_tiles": "Max. home tiles",
+          "include_display_entities": "Show the display's own entities",
+          "climate_entities": "Climate page thermostats",
+          "temperature_entity": "Room temperature",
+          "humidity_entity": "Room humidity",
           "show_in_sidebar": "Show in sidebar"
         },
         "data_description": {
@@ -84,8 +90,13 @@
           "pages": "Pages next to Home in the bottom navigation.",
           "idle_seconds": "Seconds without touch before the display goes back to Home. 0 turns this off.",
           "kiosk": "Built-in hides the header and sidebar on this dashboard only. Kiosk-mode plugin leaves this to the kiosk-mode HACS plugin. Off shows the normal Home Assistant interface.",
-          "pinned": "Shown first on the home page, in this order.",
+          "pinned": "Shown first, in this order. Can be from any room.",
           "hidden": "Never shown on this dashboard.",
+          "max_home_tiles": "At most this many tiles on Home; the last one becomes \"+N more\" when there are more. 0 shows as many as fit.",
+          "include_display_entities": "Off: the display device's own lights, switches and relays don't become tiles. Pin one to show it anyway.",
+          "climate_entities": "Optional. Can be from any room. Shown on the Climate page instead of the room's climate entities; the first is the main thermostat.",
+          "temperature_entity": "Optional. The room temperature on the room card, the Climate page and the navigation. Empty: the area's temperature sensor, else the display's own.",
+          "humidity_entity": "Optional. The room humidity on the room card and the Climate page. Empty: the area's humidity sensor, else the display's own.",
           "show_in_sidebar": "List the dashboard in the Home Assistant sidebar."
         }
       }
@@ -154,6 +165,17 @@
     "empty_room": {
       "title": "{name} has nothing to show",
       "description": "The area {area} of the wall display {name} has no lights, covers, climate, media players or scenes the dashboard can show, so its Home page only shows the clock and weather. Assign devices to the area, or reconfigure the display to use another area."
+    }
+  },
+  "exceptions": {
+    "url_path_taken": {
+      "message": "The address /{url_path} is already used by another dashboard or panel. Remove that dashboard or panel, then reload this entry."
+    },
+    "display_not_found": {
+      "message": "Unknown wall display {entry_id}."
+    },
+    "generate_failed": {
+      "message": "Could not build the dashboard for {name}. Check the Home Assistant log for details."
     }
   }
 }

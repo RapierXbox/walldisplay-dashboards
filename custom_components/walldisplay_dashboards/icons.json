@@ -1,0 +1,9 @@
+{
+  "entity": {
+    "sensor": {
+      "viewport": {
+        "default": "mdi:monitor-screenshot"
+      }
+    }
+  }
+}

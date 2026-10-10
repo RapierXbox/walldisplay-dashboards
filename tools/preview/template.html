@@ -1344,7 +1344,10 @@ body {
       const st = it.entity ? states[it.entity] : null;
       const dom = domainOf(it.entity);
       let label = it.label || "";
-      if (st && dom === "climate" && st.attributes && st.attributes.current_temperature != null && Number.isFinite(Number(st.attributes.current_temperature))) {
+      const room = it.temperature_entity ? states[it.temperature_entity] : null;
+      if (room) {   // a room temperature sensor chosen in the options (walldisplay.js)
+        if (room.state !== "" && Number.isFinite(Number(room.state))) label = `${num(room.state)}°`;
+      } else if (st && dom === "climate" && st.attributes && st.attributes.current_temperature != null && Number.isFinite(Number(st.attributes.current_temperature))) {
         label = `${num(st.attributes.current_temperature)}°`;
       }
       const live = !!st && dom === "media_player" && st.state === "playing";
@@ -1671,7 +1674,8 @@ body {
   function areaCard(card, f) {
     const id = card.area;
     if (!id) return placeholder(card, "area not set");
-    const ents = areaEntities(id);
+    const excluded = new Set(Array.isArray(card.exclude_entities) ? card.exclude_entities : []);
+    const ents = areaEntities(id).filter((e) => !excluded.has(e));
     const compact = card.display_type === "compact";
     const n = el("div", "ha-card tile area-card" + (compact ? "" : " picture") + (card.vertical ? " vertical" : ""));
     n.style.setProperty("--tile-color", card.color ? resolveColor(card.color) : "var(--state-icon-color)");

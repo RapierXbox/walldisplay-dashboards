@@ -57,7 +57,8 @@
     "error": {
       "invalid_name": "Gib einen Namen mit mindestens einem Buchstaben oder einer Ziffer ein.",
       "url_path_taken": "Es gibt bereits ein Dashboard oder Panel mit dieser Adresse. Wähle einen anderen Namen.",
-      "area_required": "Wähle einen Bereich oder ein Display-Gerät, dem ein Bereich zugewiesen ist."
+      "area_required": "Wähle einen Bereich oder ein Display-Gerät, dem ein Bereich zugewiesen ist.",
+      "area_not_found": "Diesen Bereich gibt es nicht mehr. Wähle einen anderen."
     },
     "abort": {
       "already_configured": "Ein Wanddisplay mit diesem Namen ist bereits eingerichtet.",
@@ -76,6 +77,11 @@
           "kiosk": "Kioskmodus",
           "pinned": "Angeheftete Kacheln",
           "hidden": "Ausgeblendete Entitäten",
+          "max_home_tiles": "Max. Kacheln auf der Startseite",
+          "include_display_entities": "Eigene Entitäten des Displays zeigen",
+          "climate_entities": "Thermostate der Klima-Seite",
+          "temperature_entity": "Raumtemperatur",
+          "humidity_entity": "Raumfeuchte",
           "show_in_sidebar": "In der Seitenleiste anzeigen"
         },
         "data_description": {
@@ -84,8 +90,13 @@
           "pages": "Seiten neben „Home“ in der unteren Navigation.",
           "idle_seconds": "Sekunden ohne Berührung, bis das Display zur Startseite zurückkehrt. 0 schaltet das ab.",
           "kiosk": "Integriert blendet Kopfzeile und Seitenleiste nur auf diesem Dashboard aus. Kiosk-mode-Plugin überlässt das dem HACS-Plugin kiosk-mode. Aus zeigt die normale Home-Assistant-Oberfläche.",
-          "pinned": "Erscheinen zuerst auf der Startseite, in dieser Reihenfolge.",
+          "pinned": "Erscheinen zuerst, in dieser Reihenfolge. Können aus jedem Raum sein.",
           "hidden": "Werden auf diesem Dashboard nie angezeigt.",
+          "max_home_tiles": "Höchstens so viele Kacheln auf der Startseite; die letzte wird zu „+N weitere“, wenn es mehr gibt. 0 zeigt so viele, wie passen.",
+          "include_display_entities": "Aus: Lichter, Schalter und Relais des Display-Geräts selbst werden keine Kacheln. Hefte eine an, um sie trotzdem zu zeigen.",
+          "climate_entities": "Optional. Können aus jedem Raum sein. Stehen auf der Klima-Seite statt der Klima-Entitäten des Raums; die erste ist das Haupt-Thermostat.",
+          "temperature_entity": "Optional. Die Raumtemperatur auf der Raumkarte, der Klima-Seite und in der Navigation. Leer: der Temperatursensor des Bereichs, sonst der des Displays.",
+          "humidity_entity": "Optional. Die Raumfeuchte auf der Raumkarte und der Klima-Seite. Leer: der Feuchtesensor des Bereichs, sonst der des Displays.",
           "show_in_sidebar": "Das Dashboard in der Seitenleiste von Home Assistant aufführen."
         }
       }
@@ -154,6 +165,17 @@
     "empty_room": {
       "title": "{name} hat nichts anzuzeigen",
       "description": "Der Bereich {area} des Wanddisplays {name} hat keine Lichter, Abdeckungen, Klimageräte, Mediaplayer oder Szenen, die das Dashboard anzeigen kann. Die Startseite zeigt deshalb nur Uhr und Wetter. Weise dem Bereich Geräte zu oder konfiguriere das Display mit einem anderen Bereich neu."
+    }
+  },
+  "exceptions": {
+    "url_path_taken": {
+      "message": "Die Adresse /{url_path} wird schon von einem anderen Dashboard oder Panel verwendet. Entferne dieses Dashboard oder Panel und lade den Eintrag dann neu."
+    },
+    "display_not_found": {
+      "message": "Unbekanntes Wanddisplay {entry_id}."
+    },
+    "generate_failed": {
+      "message": "Das Dashboard für {name} konnte nicht erstellt werden. Details stehen im Home-Assistant-Log."
     }
   }
 }

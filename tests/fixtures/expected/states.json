@@ -62,6 +62,46 @@
       "supported_features": 401
     }
   },
+  "climate.og_flur_heizung": {
+    "state": "heat",
+    "attributes": {
+      "friendly_name": "Flur OG Heizung",
+      "hvac_modes": [
+        "off",
+        "heat"
+      ],
+      "hvac_action": "idle",
+      "preset_modes": [
+        "comfort",
+        "eco"
+      ],
+      "preset_mode": "eco",
+      "current_temperature": 20.0,
+      "temperature": 20.0,
+      "min_temp": 7,
+      "max_temp": 30,
+      "target_temp_step": 0.5,
+      "supported_features": 401
+    }
+  },
+  "cover.ben_raffstore_nord": {
+    "state": "closed",
+    "attributes": {
+      "friendly_name": "Raffstore OG Ben Nord",
+      "device_class": "blind",
+      "current_position": 0,
+      "supported_features": 15
+    }
+  },
+  "cover.ben_raffstore_west": {
+    "state": "open",
+    "attributes": {
+      "friendly_name": "Raffstore OG Ben West",
+      "device_class": "blind",
+      "current_position": 80,
+      "supported_features": 15
+    }
+  },
   "cover.garage_door": {
     "state": "closed",
     "attributes": {
@@ -77,6 +117,48 @@
       "device_class": "blind",
       "current_position": 65,
       "supported_features": 15
+    }
+  },
+  "light.ben_bett": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Ben Bett Licht",
+      "color_mode": null,
+      "supported_color_modes": [
+        "brightness"
+      ]
+    }
+  },
+  "light.ben_display_bildschirm": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Shelly Ben Bildschirm",
+      "color_mode": "brightness",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "brightness": 255
+    }
+  },
+  "light.ben_licht": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Licht Ben OG",
+      "brightness": 153,
+      "color_mode": "brightness",
+      "supported_color_modes": [
+        "brightness"
+      ]
+    }
+  },
+  "light.ben_licht_eingang": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Licht Eingang Ben OG",
+      "color_mode": null,
+      "supported_color_modes": [
+        "onoff"
+      ]
     }
   },
   "light.guest_room_lamp": {
@@ -375,6 +457,24 @@
       "last_triggered": "2026-10-08T23:02:00+00:00"
     }
   },
+  "sensor.ben_display_temperature": {
+    "state": "24.6",
+    "attributes": {
+      "friendly_name": "Shelly Ben Temperatur",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "unit_of_measurement": "°C"
+    }
+  },
+  "sensor.ben_temperatur": {
+    "state": "21.8",
+    "attributes": {
+      "friendly_name": "Temperatur Ben OG",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "unit_of_measurement": "°C"
+    }
+  },
   "sensor.kitchen_display_humidity": {
     "state": "47",
     "attributes": {
@@ -391,6 +491,24 @@
       "device_class": "temperature",
       "state_class": "measurement",
       "unit_of_measurement": "°C"
+    }
+  },
+  "switch.ben_display_mikrofon": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Shelly Ben Mikrofon stummschalten"
+    }
+  },
+  "switch.ben_display_nachtmodus": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Shelly Ben Nachtmodus"
+    }
+  },
+  "switch.ben_display_relais": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Shelly Ben Relais"
     }
   },
   "switch.kitchen_coffee": {

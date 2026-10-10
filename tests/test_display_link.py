@@ -288,3 +288,63 @@ async def test_find_display_sensors(hass: HomeAssistant) -> None:
     elevate = _elevate_device(hass)
     assert display_link.find_display_sensors(hass, elevate) == ("sensor.panel_temperature", None)
     assert display_link.find_display_sensors(hass, None) == (None, None)
+
+
+async def test_push_without_ha_url(hass: HomeAssistant, notify) -> None:
+    """Without any Home Assistant URL the display gets the relative path, by notification."""
+    device_id = _elevate_device(hass)
+    calls = async_mock_service(hass, "text", "set_value")
+    entry = make_entry(hass, entry_data(display_device_id=device_id, display_host=HOST))
+    with patch.object(display_link, "get_url", side_effect=display_link.NoURLAvailableError):
+        assert display_link.dashboard_url(hass, entry) == "/wall-kitchen"
+        assert await display_link.async_push_url(hass, entry) == "notification"
+    # A relative path means nothing to the display's browser: never pushed.
+    assert calls == []
+    assert "`/wall-kitchen`" in notify.call_args.args[1]
+
+
+async def test_find_url_entity_by_name(hass: HomeAssistant) -> None:
+    """An older ShellyElevate text entity without the translation key is found by its id."""
+    device_id = _elevate_device(hass, with_text=False)
+    er.async_get(hass).async_get_or_create(
+        "text",
+        display_link.ELEVATE_DOMAIN,
+        f"{device_id}_webview_url",
+        device_id=device_id,
+        suggested_object_id="panel_webview_url",
+    )
+    assert display_link.find_elevate_url_entity(hass, device_id) == "text.panel_webview_url"
+    assert display_link.find_elevate_url_entity(hass, None) is None
+
+
+async def test_push_service_error_falls_back(hass: HomeAssistant, notify) -> None:
+    """A failing text.set_value is logged and the user is told the URL instead."""
+    device_id = _elevate_device(hass)
+
+    async def fail(call) -> None:
+        raise display_link.HomeAssistantError("display offline")
+
+    hass.services.async_register("text", "set_value", fail)
+    entry = make_entry(hass, entry_data(display_device_id=device_id))
+    assert await display_link.async_push_url(hass, entry) == "notification"
+    notify.assert_called_once()
+
+
+async def test_refresh_elevate_navigate(hass: HomeAssistant) -> None:
+    """An Elevate device without a reload button is sent to the dashboard path."""
+    device_id = _device(hass, display_link.ELEVATE_DOMAIN)
+    er.async_get(hass).async_get_or_create(
+        "sensor", display_link.ELEVATE_DOMAIN, f"{device_id}_lux", device_id=device_id
+    )
+    calls = async_mock_service(hass, display_link.ELEVATE_DOMAIN, "navigate")
+    entry = make_entry(hass, entry_data(display_device_id=device_id))
+    assert await display_link.async_refresh_display(hass, entry) is True
+    assert calls[0].data == {"device_id": [device_id], "path": "/wall-kitchen"}
+
+
+async def test_refresh_never_raises(hass: HomeAssistant, caplog: pytest.LogCaptureFixture) -> None:
+    """Unexpected errors while refreshing are logged, not raised."""
+    entry = make_entry(hass, entry_data(display_host=HOST))
+    with patch.object(display_link, "_http_refresh", side_effect=RuntimeError("boom")):
+        assert await display_link.async_refresh_display(hass, entry) is False
+    assert "Could not refresh display for Kitchen" in caplog.text

@@ -29,6 +29,7 @@
  *    the current view (last URL segment, dashboard root = "home") is highlighted; tapping
  *    navigates to /<dashboard>/<path> inside the frontend. With `entity`, a climate item shows
  *    the current temperature as its label and a media player item is marked while playing.
+ *    With `temperature_entity` (a sensor chosen in the options), the label is that sensor's value.
  */
 
 const DOMAIN = "walldisplay_dashboards";
@@ -179,7 +180,9 @@ class WallDisplayNav extends HTMLElement {
     const sig = (this._config?.items || []).map((i) => {
       const st = i.entity && hass?.states?.[i.entity];
       const a = st?.attributes || {};
-      return st ? `${st.state}|${a.current_temperature}|${a.temperature}|${a.hvac_action}` : "";
+      const room = i.temperature_entity && hass?.states?.[i.temperature_entity];
+      const live = st ? `${st.state}|${a.current_temperature}|${a.temperature}|${a.hvac_action}` : "";
+      return room ? `${live}|${room.state}` : live;
     }).join(";");
     if (sig !== this._sig) {
       this._sig = sig;
@@ -241,7 +244,11 @@ class WallDisplayNav extends HTMLElement {
       const st = item.entity && hass?.states?.[item.entity];
       const domain = (item.entity || "").split(".")[0];
       let text = item.label || "";
-      if (st && domain === "climate") {
+      const room = item.temperature_entity && hass?.states?.[item.temperature_entity];
+      if (room) {
+        const t = Number(room.state);
+        if (room.state !== "" && Number.isFinite(t)) text = `${formatNumber(t, hass)}°`;
+      } else if (st && domain === "climate") {
         const t = Number(st.attributes.current_temperature);
         if (st.attributes.current_temperature != null && Number.isFinite(t)) text = `${formatNumber(t, hass)}°`;
       }

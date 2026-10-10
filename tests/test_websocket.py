@@ -13,7 +13,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
-from custom_components.walldisplay_dashboards import entities, generator
+from custom_components.walldisplay_dashboards import entities, generator, repairs
 from custom_components.walldisplay_dashboards.const import DOMAIN
 from custom_components.walldisplay_dashboards.layout import compute_grid
 from custom_components.walldisplay_dashboards.models import DisplayConfig, Profile
@@ -83,6 +83,32 @@ async def test_generate_unknown_entry(
     msg = await client.receive_json()
     assert not msg["success"]
     assert msg["error"]["code"] == "not_found"
+    assert msg["error"]["translation_domain"] == DOMAIN
+    assert msg["error"]["translation_key"] == "display_not_found"
+    assert msg["error"]["translation_placeholders"] == {"entry_id": "nope"}
+
+
+async def test_generate_error_is_translated(
+    hass: HomeAssistant,
+    entry,
+    hass_ws_client: WebSocketGenerator,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failing build is logged and answered with a translated error."""
+    with patch(f"{PACKAGE}.generator.build_dashboard", side_effect=RuntimeError("boom")):
+        client = await hass_ws_client(hass)
+        await client.send_json_auto_id({"type": f"{DOMAIN}/generate", "entry_id": entry.entry_id})
+        msg = await client.receive_json()
+    assert not msg["success"]
+    error = msg["error"]
+    assert error["code"] == "home_assistant_error"
+    assert error["message"] == (
+        "Could not build the dashboard for Kitchen. Check the Home Assistant log for details"
+    )
+    assert error["translation_domain"] == DOMAIN
+    assert error["translation_key"] == "generate_failed"
+    assert error["translation_placeholders"] == {"name": "Kitchen"}
+    assert "Could not build the dashboard of Kitchen" in caplog.text
 
 
 async def test_generate_non_admin(
@@ -321,3 +347,18 @@ async def test_generate_end_to_end(hass: HomeAssistant, hass_ws_client: WebSocke
     assert display[entry.entry_id]["footer"] is footer
     assert display[entry.entry_id]["rows"] == compute_grid(profile, footer=footer).rows
     assert set(display[entry.entry_id]["views"]) == {v["path"] for v in msg["result"]["views"]}
+
+
+async def test_repair_flow_entry_gone(hass: HomeAssistant, entry) -> None:
+    """The repair flow of a display that was deleted meanwhile aborts."""
+    assert await async_setup_component(hass, "repairs", {})
+    issue_id = ISSUE_ID.format(entry.entry_id)
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    # A report that raced the removal left the issue behind.
+    repairs.async_create_viewport_issue(
+        hass, entry.entry_id, name="Kitchen", profile="Shelly", width=600, height=976
+    )
+    result = await repairs_flow_manager(hass).async_init(DOMAIN, context={"issue_id": issue_id})
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "entry_not_found"

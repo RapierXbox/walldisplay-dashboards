@@ -19,6 +19,7 @@ LABELS: dict[str, dict[str, str]] = {
         "volume": "Volume",
         "mode": "Mode",
         "humidity": "Humidity",
+        "temperature": "Temperature",
         "more_n": "+{n} more",
     },
     "de": {
@@ -31,6 +32,7 @@ LABELS: dict[str, dict[str, str]] = {
         "volume": "Lautstärke",
         "mode": "Modus",
         "humidity": "Feuchte",
+        "temperature": "Temperatur",
         "more_n": "+{n} weitere",
     },
 }
