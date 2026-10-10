@@ -237,6 +237,8 @@ async def test_report_viewport_mismatch_and_repair(
     hass: HomeAssistant, entry, hass_ws_client: WebSocketGenerator, issue_registry: ir.IssueRegistry
 ) -> None:
     """A mismatch raises a fixable issue whose flow adopts the measured size."""
+    # repairs registers HTTP views, so it must be set up before the ws client starts the server.
+    assert await async_setup_component(hass, "repairs", {})
     msg = await _report(hass, hass_ws_client, entry.entry_id, 600, 976)
     assert msg["result"] == {"profile_width": 480, "profile_height": 480, "matches": False}
 
@@ -247,7 +249,6 @@ async def test_report_viewport_mismatch_and_repair(
     assert issue.translation_placeholders["measured"] == "600×976"
     assert hass.states.get(SENSOR).attributes["matches"] is False
 
-    assert await async_setup_component(hass, "repairs", {})
     manager = repairs_flow_manager(hass)
     result = await manager.async_init(DOMAIN, context={"issue_id": issue.issue_id})
     assert result["type"] is FlowResultType.FORM
