@@ -1,0 +1,741 @@
+{
+  "title": "Kitchen",
+  "views": [
+    {
+      "title": "Home",
+      "path": "home",
+      "type": "sections",
+      "max_columns": 3,
+      "top_margin": false,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "clock",
+              "clock_size": "medium",
+              "no_background": true,
+              "grid_options": {
+                "columns": 12,
+                "rows": 2
+              }
+            },
+            {
+              "type": "markdown",
+              "text_only": true,
+              "content": "{{ now().strftime('%A, %-d %B') }}",
+              "grid_options": {
+                "columns": 12,
+                "rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "weather.home",
+              "grid_options": {
+                "columns": 12,
+                "rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.display_temperature",
+              "grid_options": {
+                "columns": 6,
+                "rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.display_humidity",
+              "grid_options": {
+                "columns": 6,
+                "rows": 1
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Cooking",
+              "icon": "mdi:palette",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.kitchen_cooking"
+                }
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Dinner",
+              "icon": "mdi:palette",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.kitchen_dinner"
+                }
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1
+              }
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "column_span": 2,
+          "cards": [
+            {
+              "type": "tile",
+              "entity": "light.kitchen_ceiling",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_counter",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "cover.kitchen_blind",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "climate.kitchen",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true
+            },
+            {
+              "type": "tile",
+              "entity": "media_player.kitchen_speaker",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true
+            },
+            {
+              "type": "tile",
+              "entity": "switch.coffee_machine",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "fan.kitchen_hood",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.dining_pendant",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_counter",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "switch.coffee_machine",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "fan.kitchen_hood",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.dining_pendant",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              }
+            },
+            {
+              "type": "custom:mushroom-chips-card",
+              "grid_options": {
+                "columns": 12,
+                "rows": 1
+              }
+            }
+          ]
+        }
+      ],
+      "footer": {
+        "card": {
+          "type": "grid",
+          "columns": 4,
+          "square": false,
+          "cards": [
+            {
+              "type": "shortcut",
+              "name": "Home",
+              "icon": "mdi:home",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "home"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Heat",
+              "icon": "mdi:thermostat",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "climate"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Media",
+              "icon": "mdi:speaker",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "media"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Scenes",
+              "icon": "mdi:palette",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "scenes"
+              }
+            }
+          ]
+        },
+        "max_width": 1280
+      }
+    },
+    {
+      "title": "Heat",
+      "path": "climate",
+      "type": "sections",
+      "max_columns": 3,
+      "top_margin": false,
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 3,
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Heating",
+              "heading_style": "title",
+              "icon": "mdi:thermostat"
+            },
+            {
+              "type": "tile",
+              "entity": "climate.kitchen",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "features": [
+                {
+                  "type": "target-temperature"
+                }
+              ]
+            },
+            {
+              "type": "tile",
+              "entity": "climate.living_room",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "features": [
+                {
+                  "type": "target-temperature"
+                }
+              ]
+            },
+            {
+              "type": "tile",
+              "entity": "climate.bedroom",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "features": [
+                {
+                  "type": "target-temperature"
+                }
+              ]
+            },
+            {
+              "type": "tile",
+              "entity": "climate.bathroom",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "features": [
+                {
+                  "type": "target-temperature"
+                }
+              ]
+            },
+            {
+              "type": "tile",
+              "entity": "climate.office",
+              "grid_options": {
+                "columns": 4,
+                "rows": 2
+              },
+              "features": [
+                {
+                  "type": "target-temperature"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "footer": {
+        "card": {
+          "type": "grid",
+          "columns": 4,
+          "square": false,
+          "cards": [
+            {
+              "type": "shortcut",
+              "name": "Home",
+              "icon": "mdi:home",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "home"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Heat",
+              "icon": "mdi:thermostat",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "climate"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Media",
+              "icon": "mdi:speaker",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "media"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Scenes",
+              "icon": "mdi:palette",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "scenes"
+              }
+            }
+          ]
+        },
+        "max_width": 1280
+      }
+    },
+    {
+      "title": "Media",
+      "path": "media",
+      "type": "sections",
+      "max_columns": 3,
+      "top_margin": false,
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 3,
+          "cards": [
+            {
+              "type": "tile",
+              "entity": "media_player.kitchen_speaker",
+              "grid_options": {
+                "columns": 12,
+                "rows": 1
+              },
+              "features": [
+                {
+                  "type": "media-player-playback"
+                }
+              ],
+              "features_position": "inline"
+            },
+            {
+              "type": "tile",
+              "entity": "media_player.living_room_tv",
+              "grid_options": {
+                "columns": 12,
+                "rows": 1
+              },
+              "features": [
+                {
+                  "type": "media-player-playback"
+                }
+              ],
+              "features_position": "inline"
+            },
+            {
+              "type": "tile",
+              "entity": "media_player.bedroom",
+              "grid_options": {
+                "columns": 12,
+                "rows": 1
+              },
+              "features": [
+                {
+                  "type": "media-player-playback"
+                }
+              ],
+              "features_position": "inline"
+            },
+            {
+              "type": "tile",
+              "entity": "media_player.kitchen_speaker",
+              "grid_options": {
+                "columns": 12,
+                "rows": 2
+              },
+              "features": [
+                {
+                  "type": "media-player-volume-slider"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "footer": {
+        "card": {
+          "type": "grid",
+          "columns": 4,
+          "square": false,
+          "cards": [
+            {
+              "type": "shortcut",
+              "name": "Home",
+              "icon": "mdi:home",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "home"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Heat",
+              "icon": "mdi:thermostat",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "climate"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Media",
+              "icon": "mdi:speaker",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "media"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Scenes",
+              "icon": "mdi:palette",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "scenes"
+              }
+            }
+          ]
+        },
+        "max_width": 1280
+      }
+    },
+    {
+      "title": "Scenes",
+      "path": "scenes",
+      "type": "sections",
+      "max_columns": 3,
+      "top_margin": false,
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 3,
+          "cards": [
+            {
+              "type": "shortcut",
+              "name": "Cooking",
+              "icon": "mdi:palette",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.kitchen_cooking"
+                }
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 1
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Dinner",
+              "icon": "mdi:palette",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.kitchen_dinner"
+                }
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 1
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Movie",
+              "icon": "mdi:palette",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.living_movie"
+                }
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 1
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Good night",
+              "icon": "mdi:palette",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.good_night"
+                }
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 1
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Leave home",
+              "icon": "mdi:script-text",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "script.turn_on",
+                "target": {
+                  "entity_id": "script.leave_home"
+                }
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 1
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Morning",
+              "icon": "mdi:palette",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.morning"
+                }
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 1
+              }
+            }
+          ]
+        }
+      ],
+      "footer": {
+        "card": {
+          "type": "grid",
+          "columns": 4,
+          "square": false,
+          "cards": [
+            {
+              "type": "shortcut",
+              "name": "Home",
+              "icon": "mdi:home",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "home"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Heat",
+              "icon": "mdi:thermostat",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "climate"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Media",
+              "icon": "mdi:speaker",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "media"
+              }
+            },
+            {
+              "type": "shortcut",
+              "name": "Scenes",
+              "icon": "mdi:palette",
+              "vertical": false,
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "scenes"
+              }
+            }
+          ]
+        },
+        "max_width": 1280
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+ "kitchen": {
+  "name": "Küche",
+  "icon": "mdi:stove",
+  "temperature_entity_id": "sensor.kitchen_temperature",
+  "entities": [
+   "light.kitchen_ceiling",
+   "light.kitchen_counter",
+   "cover.kitchen_blind",
+   "binary_sensor.kitchen_window",
+   "sensor.kitchen_temperature",
+   "sensor.kitchen_humidity",
+   "climate.kitchen",
+   "switch.coffee_machine"
+  ]
+ }
+}

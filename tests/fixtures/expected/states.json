@@ -1,0 +1,424 @@
+{
+  "alarm_control_panel.home_alarm": {
+    "state": "armed_home",
+    "attributes": {
+      "friendly_name": "Alarm",
+      "code_arm_required": false,
+      "code_format": null,
+      "changed_by": null,
+      "supported_features": 7
+    }
+  },
+  "binary_sensor.bathroom_window": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Bathroom Window",
+      "device_class": "window"
+    }
+  },
+  "binary_sensor.front_door": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Front door",
+      "device_class": "door"
+    }
+  },
+  "binary_sensor.garage_door": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Garage door",
+      "device_class": "garage_door"
+    }
+  },
+  "binary_sensor.living_room_window": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Living Room Window",
+      "device_class": "window"
+    }
+  },
+  "climate.kitchen_heating": {
+    "state": "heat",
+    "attributes": {
+      "friendly_name": "Kitchen Heating",
+      "hvac_modes": [
+        "off",
+        "heat",
+        "auto"
+      ],
+      "hvac_action": "heating",
+      "preset_modes": [
+        "comfort",
+        "eco",
+        "away",
+        "boost"
+      ],
+      "preset_mode": "comfort",
+      "current_temperature": 20.5,
+      "temperature": 21.5,
+      "min_temp": 7,
+      "max_temp": 30,
+      "target_temp_step": 0.5,
+      "supported_features": 401
+    }
+  },
+  "cover.garage_door": {
+    "state": "closed",
+    "attributes": {
+      "friendly_name": "Hallway Garage door",
+      "device_class": "garage",
+      "supported_features": 11
+    }
+  },
+  "cover.kitchen_blinds": {
+    "state": "open",
+    "attributes": {
+      "friendly_name": "Kitchen Blinds",
+      "device_class": "blind",
+      "current_position": 65,
+      "supported_features": 15
+    }
+  },
+  "light.guest_room_lamp": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Guest Room Lamp",
+      "color_mode": null,
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.hallway_ceiling": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Hallway Ceiling",
+      "color_mode": null,
+      "supported_color_modes": [
+        "onoff"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_ceiling": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Kitchen Ceiling",
+      "brightness": 204,
+      "color_mode": "brightness",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_counter": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Counter",
+      "color_mode": null,
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_01": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 1",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0,
+      "brightness": 180,
+      "color_mode": "brightness"
+    }
+  },
+  "light.kitchen_lamp_02": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 2",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_03": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 3",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_04": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 4",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0,
+      "brightness": 180,
+      "color_mode": "brightness"
+    }
+  },
+  "light.kitchen_lamp_05": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 5",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_06": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 6",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_07": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 7",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0,
+      "brightness": 180,
+      "color_mode": "brightness"
+    }
+  },
+  "light.kitchen_lamp_08": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 8",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_09": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 9",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_10": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 10",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0,
+      "brightness": 180,
+      "color_mode": "brightness"
+    }
+  },
+  "light.kitchen_lamp_11": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 11",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_12": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 12",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "light.kitchen_lamp_13": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 13",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0,
+      "brightness": 180,
+      "color_mode": "brightness"
+    }
+  },
+  "light.kitchen_lamp_14": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Lamp 14",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "supported_features": 0
+    }
+  },
+  "lock.front_door": {
+    "state": "locked",
+    "attributes": {
+      "friendly_name": "Front door",
+      "supported_features": 1
+    }
+  },
+  "media_player.kitchen_radio": {
+    "state": "idle",
+    "attributes": {
+      "friendly_name": "Kitchen Radio",
+      "device_class": "speaker",
+      "volume_level": 0.25,
+      "is_volume_muted": false,
+      "source": "FM4",
+      "source_list": [
+        "FM4",
+        "Ö1",
+        "BBC Radio 6 Music"
+      ],
+      "supported_features": 22917
+    }
+  },
+  "media_player.kitchen_speaker": {
+    "state": "playing",
+    "attributes": {
+      "friendly_name": "Kitchen Speaker",
+      "device_class": "speaker",
+      "volume_level": 0.32,
+      "is_volume_muted": false,
+      "media_content_type": "music",
+      "media_title": "Harvest Moon",
+      "media_artist": "Neil Young",
+      "media_album_name": "Harvest Moon",
+      "media_duration": 303,
+      "media_position": 121,
+      "source": "Spotify",
+      "supported_features": 21949
+    }
+  },
+  "person.anna": {
+    "state": "home",
+    "attributes": {
+      "friendly_name": "Anna",
+      "source": "device_tracker.anna_phone",
+      "device_trackers": [
+        "device_tracker.anna_phone"
+      ]
+    }
+  },
+  "person.ben": {
+    "state": "not_home",
+    "attributes": {
+      "friendly_name": "Ben",
+      "source": "device_tracker.ben_phone",
+      "device_trackers": [
+        "device_tracker.ben_phone"
+      ]
+    }
+  },
+  "scene.all_off": {
+    "state": "2026-10-07T23:10:00+00:00",
+    "attributes": {
+      "friendly_name": "All off",
+      "icon": "mdi:power-plug-off"
+    }
+  },
+  "scene.away": {
+    "state": "2026-10-08T07:41:09+00:00",
+    "attributes": {
+      "friendly_name": "Away",
+      "icon": "mdi:home-export-outline"
+    }
+  },
+  "scene.good_night": {
+    "state": "2026-10-08T22:41:09+00:00",
+    "attributes": {
+      "friendly_name": "Good night",
+      "icon": "mdi:weather-night"
+    }
+  },
+  "scene.kitchen_breakfast": {
+    "state": "2026-10-09T06:45:03+00:00",
+    "attributes": {
+      "friendly_name": "Kitchen Breakfast"
+    }
+  },
+  "scene.kitchen_cooking": {
+    "state": "2026-10-08T18:02:11+00:00",
+    "attributes": {
+      "friendly_name": "Kitchen Cooking"
+    }
+  },
+  "script.all_off": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "All off",
+      "icon": "mdi:power",
+      "last_triggered": "2026-10-08T23:02:00+00:00"
+    }
+  },
+  "sensor.kitchen_display_humidity": {
+    "state": "47",
+    "attributes": {
+      "friendly_name": "Kitchen Display Humidity",
+      "device_class": "humidity",
+      "state_class": "measurement",
+      "unit_of_measurement": "%"
+    }
+  },
+  "sensor.kitchen_display_temperature": {
+    "state": "21.3",
+    "attributes": {
+      "friendly_name": "Kitchen Display Temperature",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "unit_of_measurement": "°C"
+    }
+  },
+  "switch.kitchen_coffee": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Kitchen Coffee machine",
+      "device_class": "outlet"
+    }
+  },
+  "weather.forecast_home": {
+    "state": "partlycloudy",
+    "attributes": {
+      "friendly_name": "Forecast Home",
+      "temperature": 14.2,
+      "apparent_temperature": 13.1,
+      "dew_point": 8.9,
+      "temperature_unit": "°C",
+      "humidity": 71,
+      "cloud_coverage": 55,
+      "pressure": 1016.4,
+      "pressure_unit": "hPa",
+      "wind_bearing": 230,
+      "wind_speed": 14.8,
+      "wind_speed_unit": "km/h",
+      "visibility_unit": "km",
+      "precipitation_unit": "mm",
+      "attribution": "Weather forecast from met.no",
+      "supported_features": 3
+    }
+  }
+}

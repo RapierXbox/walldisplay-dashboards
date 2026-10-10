@@ -1,0 +1,14 @@
+{
+  "name": "walldisplay-sandbox",
+  "private": true,
+  "type": "module",
+  "description": "Home Assistant sandbox and screenshot checks for walldisplay_dashboards",
+  "scripts": {
+    "setup": "node setup.mjs",
+    "spike": "node spike.mjs",
+    "shoot": "node shoot.mjs"
+  },
+  "dependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a wall display",
+        "description": "Creates a dashboard laid out for one wall display.",
+        "data": {
+          "name": "Name",
+          "display_device_id": "Display device",
+          "area_id": "Area",
+          "profile": "Display model",
+          "role": "Role",
+          "display_host": "Display host",
+          "weather_entity": "Weather"
+        },
+        "data_description": {
+          "name": "Also sets the dashboard address, for example /wall-kitchen. It cannot be changed later.",
+          "display_device_id": "Optional. The Shelly or ShellyElevate device of the display. Its area is used if you leave Area empty, its temperature and humidity sensors are shown as indoor climate, and the dashboard address is pushed to ShellyElevate.",
+          "area_id": "The room the display hangs in. Its lights, covers and other devices become the home tiles. Leave empty to use the display device's area.",
+          "profile": "Sets the screen size the dashboard is laid out for. Choose Custom size for other screens.",
+          "role": "Room shows this room's lights, climate, media and scenes. Entrance adds house-wide status (who's home, lights left on, open doors and windows) and leave-home actions.",
+          "display_host": "Optional. IP address or hostname of a ShellyElevate display that is not added to Home Assistant. Used to send it the dashboard address directly.",
+          "weather_entity": "Optional. Shown in the status bar or info column."
+        }
+      },
+      "custom_size": {
+        "title": "Custom screen size",
+        "description": "Enter the size the display's browser reports, in CSS pixels.",
+        "data": {
+          "width": "Width",
+          "height": "Height"
+        },
+        "data_description": {
+          "width": "CSS pixels, not physical pixels. A 720 px wide screen at 1.5× scaling is 480 CSS px.",
+          "height": "CSS pixels, not physical pixels."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure {name}",
+        "description": "The name and dashboard address stay the same.",
+        "data": {
+          "display_device_id": "Display device",
+          "area_id": "Area",
+          "profile": "Display model",
+          "display_host": "Display host",
+          "weather_entity": "Weather"
+        },
+        "data_description": {
+          "display_device_id": "Optional. The Shelly or ShellyElevate device of the display. Its area is used if you leave Area empty, its temperature and humidity sensors are shown as indoor climate, and the dashboard address is pushed to ShellyElevate.",
+          "area_id": "The room the display hangs in. Its lights, covers and other devices become the home tiles. Leave empty to use the display device's area.",
+          "profile": "Sets the screen size the dashboard is laid out for. Choose Custom size for other screens.",
+          "display_host": "Optional. IP address or hostname of a ShellyElevate display that is not added to Home Assistant. Used to send it the dashboard address directly.",
+          "weather_entity": "Optional. Shown in the status bar or info column."
+        }
+      }
+    },
+    "error": {
+      "invalid_name": "Enter a name with at least one letter or digit.",
+      "url_path_taken": "A dashboard or panel with this address already exists. Choose another name.",
+      "area_required": "Choose an area, or a display device that has an area."
+    },
+    "abort": {
+      "already_configured": "A wall display with this name is already set up.",
+      "reconfigure_successful": "The display was updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Wall display options",
+        "data": {
+          "scene_buttons": "Favourite scenes",
+          "role": "Role",
+          "pages": "Extra pages",
+          "idle_seconds": "Return home after",
+          "kiosk": "Kiosk mode",
+          "pinned": "Pinned tiles",
+          "hidden": "Hidden entities",
+          "show_in_sidebar": "Show in sidebar"
+        },
+        "data_description": {
+          "scene_buttons": "Up to 2 scenes or scripts, shown first on the Scenes page.",
+          "role": "Room shows this room's lights, climate, media and scenes. Entrance adds house-wide status (who's home, lights left on, open doors and windows) and leave-home actions.",
+          "pages": "Pages next to Home in the bottom navigation.",
+          "idle_seconds": "Seconds without touch before the display goes back to Home. 0 turns this off.",
+          "kiosk": "Built-in hides the header and sidebar on this dashboard only. Kiosk-mode plugin leaves this to the kiosk-mode HACS plugin. Off shows the normal Home Assistant interface.",
+          "pinned": "Shown first on the home page, in this order.",
+          "hidden": "Never shown on this dashboard.",
+          "show_in_sidebar": "List the dashboard in the Home Assistant sidebar."
+        }
+      }
+    },
+    "error": {
+      "too_many_scene_buttons": "Choose at most 2 favourite scenes."
+    }
+  },
+  "selector": {
+    "profile": {
+      "options": {
+        "shelly_wall_display": "Shelly Wall Display (4\")",
+        "shelly_x1i": "Shelly Wall Display X1i",
+        "shelly_x2_landscape": "Shelly Wall Display X2 / X2i, landscape",
+        "shelly_x2_portrait": "Shelly Wall Display X2 / X2i, portrait",
+        "shelly_xl": "Shelly Wall Display XL / XLi",
+        "nspanel_pro": "Sonoff NSPanel Pro",
+        "tablet_landscape": "Tablet, landscape (8–10\")",
+        "tablet_portrait": "Tablet, portrait (8–10\")",
+        "custom": "Custom size"
+      }
+    },
+    "pages": {
+      "options": {
+        "climate": "Climate",
+        "media": "Media",
+        "scenes": "Scenes"
+      }
+    },
+    "kiosk": {
+      "options": {
+        "builtin": "Built-in",
+        "kiosk_mode": "Kiosk-mode plugin",
+        "off": "Off"
+      }
+    },
+    "role": {
+      "options": {
+        "room": "Room",
+        "entrance": "Entrance"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "viewport": {
+        "name": "Measured viewport"
+      }
+    }
+  },
+  "issues": {
+    "viewport_mismatch": {
+      "title": "Display size differs from the chosen model",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Display size differs from the chosen model",
+            "description": "The dashboard for {name} was laid out for {profile}, but the display reports {measured}. Submit to lay it out for the measured size instead."
+          }
+        },
+        "abort": {
+          "entry_not_found": "The display no longer exists."
+        }
+      }
+    },
+    "empty_room": {
+      "title": "{name} has nothing to show",
+      "description": "The area {area} of the wall display {name} has no lights, covers, climate, media players or scenes the dashboard can show, so its Home page only shows the clock and weather. Assign devices to the area, or reconfigure the display to use another area."
+    }
+  }
+}

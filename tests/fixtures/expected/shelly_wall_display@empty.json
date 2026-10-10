@@ -1,0 +1,82 @@
+{
+  "title": "Guest Room",
+  "views": [
+    {
+      "type": "sections",
+      "title": "Home",
+      "path": "home",
+      "icon": "mdi:home",
+      "max_columns": 1,
+      "top_margin": false,
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "clock",
+              "clock_size": "small",
+              "no_background": true,
+              "date_format": [
+                "weekday-short",
+                "day-numeric",
+                "month-short"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "weather.forecast_home",
+              "name": "Outside",
+              "state_content": [
+                "temperature"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "weather-forecast",
+              "entity": "weather.forecast_home",
+              "show_current": false,
+              "show_forecast": true,
+              "forecast_type": "hourly",
+              "grid_options": {
+                "columns": 12,
+                "rows": 2,
+                "min_columns": 12,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.guest_room_lamp",
+              "name": "Lamp",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 4,
+                "min_columns": 12,
+                "min_rows": 4
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

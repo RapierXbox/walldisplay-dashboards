@@ -1,0 +1,287 @@
+{
+ "title": "Hallway",
+ "views": [
+  {
+   "type": "sections",
+   "title": "Home",
+   "path": "home",
+   "max_columns": 1,
+   "top_margin": false,
+   "sections": [
+    {
+     "type": "grid",
+     "cards": [
+      {
+       "type": "clock",
+       "clock_size": "small",
+       "no_background": true,
+       "date_format": [
+        "weekday-short",
+        "day-numeric",
+        "month-short"
+       ],
+       "grid_options": {
+        "columns": 6,
+        "rows": 1
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "weather.home",
+       "name": "Outside",
+       "state_content": [
+        "temperature",
+        "state"
+       ],
+       "grid_options": {
+        "columns": 6,
+        "rows": 1
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "person.anna",
+       "show_entity_picture": true,
+       "vertical": true,
+       "grid_options": {
+        "columns": 4,
+        "rows": 2
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "person.ben",
+       "show_entity_picture": true,
+       "vertical": true,
+       "grid_options": {
+        "columns": 4,
+        "rows": 2
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "person.carla",
+       "vertical": true,
+       "grid_options": {
+        "columns": 4,
+        "rows": 2
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "lock.front_door",
+       "vertical": true,
+       "grid_options": {
+        "columns": 4,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "more-info"
+       },
+       "icon_tap_action": {
+        "action": "none"
+       },
+       "hold_action": {
+        "action": "more-info"
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "cover.garage_door",
+       "vertical": true,
+       "grid_options": {
+        "columns": 4,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "more-info"
+       },
+       "icon_tap_action": {
+        "action": "none"
+       },
+       "hold_action": {
+        "action": "more-info"
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "alarm_control_panel.house",
+       "vertical": true,
+       "grid_options": {
+        "columns": 4,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "more-info"
+       },
+       "icon_tap_action": {
+        "action": "none"
+       },
+       "hold_action": {
+        "action": "more-info"
+       }
+      }
+     ]
+    }
+   ],
+   "footer": {
+    "card": {
+     "type": "custom:wall-display-nav",
+     "items": [
+      {
+       "path": "home",
+       "label": "Home",
+       "icon": "mdi:home"
+      },
+      {
+       "path": "scenes",
+       "label": "Scenes",
+       "icon": "mdi:palette"
+      }
+     ]
+    },
+    "max_width": 480
+   }
+  },
+  {
+   "type": "sections",
+   "title": "Scenes",
+   "path": "scenes",
+   "max_columns": 1,
+   "top_margin": false,
+   "sections": [
+    {
+     "type": "grid",
+     "cards": [
+      {
+       "type": "tile",
+       "entity": "scene.away",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 6,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.away"
+        }
+       },
+       "icon_tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.away"
+        }
+       },
+       "hold_action": {
+        "action": "none"
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "script.all_off",
+       "vertical": true,
+       "hide_state": false,
+       "grid_options": {
+        "columns": 6,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "script.turn_on",
+        "target": {
+         "entity_id": "script.all_off"
+        }
+       },
+       "icon_tap_action": {
+        "action": "perform-action",
+        "perform_action": "script.turn_on",
+        "target": {
+         "entity_id": "script.all_off"
+        }
+       },
+       "hold_action": {
+        "action": "none"
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "scene.good_night",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 6,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.good_night"
+        }
+       },
+       "icon_tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.good_night"
+        }
+       },
+       "hold_action": {
+        "action": "none"
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "scene.morning",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 6,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.morning"
+        }
+       },
+       "icon_tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.morning"
+        }
+       },
+       "hold_action": {
+        "action": "none"
+       }
+      }
+     ]
+    }
+   ],
+   "footer": {
+    "card": {
+     "type": "custom:wall-display-nav",
+     "items": [
+      {
+       "path": "home",
+       "label": "Home",
+       "icon": "mdi:home"
+      },
+      {
+       "path": "scenes",
+       "label": "Scenes",
+       "icon": "mdi:palette"
+      }
+     ]
+    },
+    "max_width": 480
+   }
+  }
+ ]
+}

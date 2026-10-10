@@ -1,0 +1,473 @@
+{
+ "title": "Küche",
+ "views": [
+  {
+   "type": "sections",
+   "title": "Start",
+   "path": "home",
+   "max_columns": 2,
+   "top_margin": false,
+   "sections": [
+    {
+     "type": "grid",
+     "cards": [
+      {
+       "type": "clock",
+       "clock_size": "medium",
+       "no_background": true,
+       "date_format": [
+        "weekday-long",
+        "day-numeric",
+        "month-long"
+       ],
+       "grid_options": {
+        "columns": 8,
+        "rows": 1
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "light.kitchen_ceiling",
+       "vertical": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 3
+       },
+       "tap_action": {
+        "action": "toggle"
+       },
+       "features": [
+        {
+         "type": "light-brightness"
+        }
+       ],
+       "features_position": "bottom"
+      },
+      {
+       "type": "tile",
+       "entity": "cover.kitchen_blind",
+       "vertical": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 3
+       },
+       "tap_action": {
+        "action": "toggle"
+       },
+       "features": [
+        {
+         "type": "cover-open-close"
+        }
+       ]
+      },
+      {
+       "type": "tile",
+       "entity": "weather.home",
+       "name": "Draußen",
+       "state_content": [
+        "temperature",
+        "state"
+       ],
+       "grid_options": {
+        "columns": 8,
+        "rows": 1
+       }
+      },
+      {
+       "type": "area",
+       "area": "kitchen",
+       "display_type": "compact",
+       "sensor_classes": [
+        "temperature",
+        "humidity"
+       ],
+       "alert_classes": [
+        "window",
+        "door",
+        "moisture"
+       ],
+       "features": [
+        {
+         "type": "area-controls",
+         "controls": [
+          "light",
+          "cover-blind"
+         ]
+        }
+       ],
+       "features_position": "bottom",
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       }
+      },
+      {
+       "type": "weather-forecast",
+       "entity": "weather.home",
+       "show_current": false,
+       "forecast_type": "hourly",
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "light.kitchen_counter",
+       "vertical": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "toggle"
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "switch.coffee_machine",
+       "vertical": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "toggle"
+       }
+      }
+     ],
+     "column_span": 2
+    }
+   ],
+   "footer": {
+    "card": {
+     "type": "custom:wall-display-nav",
+     "items": [
+      {
+       "path": "home",
+       "label": "Start",
+       "icon": "mdi:home"
+      },
+      {
+       "path": "climate",
+       "label": "Klima",
+       "icon": "mdi:thermostat",
+       "entity": "climate.kitchen"
+      },
+      {
+       "path": "media",
+       "label": "Medien",
+       "icon": "mdi:speaker",
+       "entity": "media_player.living_room_tv"
+      },
+      {
+       "path": "scenes",
+       "label": "Szenen",
+       "icon": "mdi:palette"
+      }
+     ]
+    },
+    "max_width": 960
+   }
+  },
+  {
+   "type": "sections",
+   "title": "Klima",
+   "path": "climate",
+   "max_columns": 2,
+   "top_margin": false,
+   "sections": [
+    {
+     "type": "grid",
+     "cards": [
+      {
+       "type": "thermostat",
+       "entity": "climate.kitchen",
+       "grid_options": {
+        "columns": 16,
+        "rows": 5
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "climate.kitchen",
+       "name": "Modus",
+       "hide_state": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "features": [
+        {
+         "type": "climate-hvac-modes",
+         "style": "icons",
+         "hvac_modes": [
+          "off",
+          "heat",
+          "auto"
+         ]
+        }
+       ]
+      },
+      {
+       "type": "tile",
+       "entity": "sensor.display_humidity",
+       "grid_options": {
+        "columns": 8,
+        "rows": 1
+       }
+      }
+     ],
+     "column_span": 2
+    }
+   ],
+   "footer": {
+    "card": {
+     "type": "custom:wall-display-nav",
+     "items": [
+      {
+       "path": "home",
+       "label": "Start",
+       "icon": "mdi:home"
+      },
+      {
+       "path": "climate",
+       "label": "Klima",
+       "icon": "mdi:thermostat",
+       "entity": "climate.kitchen"
+      },
+      {
+       "path": "media",
+       "label": "Medien",
+       "icon": "mdi:speaker",
+       "entity": "media_player.living_room_tv"
+      },
+      {
+       "path": "scenes",
+       "label": "Szenen",
+       "icon": "mdi:palette"
+      }
+     ]
+    },
+    "max_width": 960
+   }
+  },
+  {
+   "type": "sections",
+   "title": "Medien",
+   "path": "media",
+   "max_columns": 2,
+   "top_margin": false,
+   "sections": [
+    {
+     "type": "grid",
+     "cards": [
+      {
+       "type": "media-control",
+       "entity": "media_player.living_room_tv",
+       "grid_options": {
+        "columns": "full",
+        "rows": "auto"
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "media_player.living_room_tv",
+       "name": "Lautstärke",
+       "icon": "mdi:volume-high",
+       "hide_state": true,
+       "features": [
+        {
+         "type": "media-player-volume-slider"
+        }
+       ],
+       "features_position": "inline",
+       "grid_options": {
+        "columns": 24,
+        "rows": 1
+       }
+      }
+     ],
+     "column_span": 2
+    }
+   ],
+   "footer": {
+    "card": {
+     "type": "custom:wall-display-nav",
+     "items": [
+      {
+       "path": "home",
+       "label": "Start",
+       "icon": "mdi:home"
+      },
+      {
+       "path": "climate",
+       "label": "Klima",
+       "icon": "mdi:thermostat",
+       "entity": "climate.kitchen"
+      },
+      {
+       "path": "media",
+       "label": "Medien",
+       "icon": "mdi:speaker",
+       "entity": "media_player.living_room_tv"
+      },
+      {
+       "path": "scenes",
+       "label": "Szenen",
+       "icon": "mdi:palette"
+      }
+     ]
+    },
+    "max_width": 960
+   }
+  },
+  {
+   "type": "sections",
+   "title": "Szenen",
+   "path": "scenes",
+   "max_columns": 2,
+   "top_margin": false,
+   "sections": [
+    {
+     "type": "grid",
+     "cards": [
+      {
+       "type": "tile",
+       "entity": "scene.kitchen_cooking",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.kitchen_cooking"
+        }
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "scene.kitchen_dinner",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.kitchen_dinner"
+        }
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "scene.living_movie",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.living_movie"
+        }
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "scene.good_night",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.good_night"
+        }
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "scene.morning",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.morning"
+        }
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "scene.away",
+       "vertical": true,
+       "hide_state": true,
+       "grid_options": {
+        "columns": 8,
+        "rows": 2
+       },
+       "tap_action": {
+        "action": "perform-action",
+        "perform_action": "scene.turn_on",
+        "target": {
+         "entity_id": "scene.away"
+        }
+       }
+      }
+     ],
+     "column_span": 2
+    }
+   ],
+   "footer": {
+    "card": {
+     "type": "custom:wall-display-nav",
+     "items": [
+      {
+       "path": "home",
+       "label": "Start",
+       "icon": "mdi:home"
+      },
+      {
+       "path": "climate",
+       "label": "Klima",
+       "icon": "mdi:thermostat",
+       "entity": "climate.kitchen"
+      },
+      {
+       "path": "media",
+       "label": "Medien",
+       "icon": "mdi:speaker",
+       "entity": "media_player.living_room_tv"
+      },
+      {
+       "path": "scenes",
+       "label": "Szenen",
+       "icon": "mdi:palette"
+      }
+     ]
+    },
+    "max_width": 960
+   }
+  }
+ ]
+}

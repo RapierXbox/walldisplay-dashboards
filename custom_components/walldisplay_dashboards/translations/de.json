@@ -1,0 +1,159 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Wanddisplay hinzufügen",
+        "description": "Erstellt ein Dashboard, das auf ein Wanddisplay zugeschnitten ist.",
+        "data": {
+          "name": "Name",
+          "display_device_id": "Display-Gerät",
+          "area_id": "Bereich",
+          "profile": "Displaymodell",
+          "role": "Rolle",
+          "display_host": "Display-Adresse",
+          "weather_entity": "Wetter"
+        },
+        "data_description": {
+          "name": "Bestimmt auch die Adresse des Dashboards, zum Beispiel /wall-kueche. Sie lässt sich später nicht mehr ändern.",
+          "display_device_id": "Optional. Das Shelly- oder ShellyElevate-Gerät des Displays. Sein Bereich wird übernommen, wenn „Bereich“ leer bleibt. Seine Temperatur- und Feuchtigkeitssensoren werden als Raumklima angezeigt, und die Dashboard-Adresse wird an ShellyElevate übertragen.",
+          "area_id": "Der Raum, in dem das Display hängt. Seine Lichter, Rollläden und anderen Geräte werden zu den Kacheln der Startseite. Leer lassen, um den Bereich des Display-Geräts zu übernehmen.",
+          "profile": "Legt die Bildschirmgröße fest, für die das Dashboard aufgebaut wird. Für andere Bildschirme „Eigene Größe“ wählen.",
+          "role": "Raum zeigt Lichter, Klima, Medien und Szenen dieses Raums. Eingang zeigt zusätzlich den Status des ganzen Hauses (wer zu Hause ist, brennende Lichter, offene Türen und Fenster) und Aktionen zum Verlassen des Hauses.",
+          "display_host": "Optional. IP-Adresse oder Hostname eines ShellyElevate-Displays, das nicht in Home Assistant eingebunden ist. Darüber wird ihm die Dashboard-Adresse direkt geschickt.",
+          "weather_entity": "Optional. Erscheint in der Statusleiste oder Infospalte."
+        }
+      },
+      "custom_size": {
+        "title": "Eigene Bildschirmgröße",
+        "description": "Gib die Größe ein, die der Browser des Displays meldet, in CSS-Pixeln.",
+        "data": {
+          "width": "Breite",
+          "height": "Höhe"
+        },
+        "data_description": {
+          "width": "CSS-Pixel, nicht physische Pixel. Ein 720 px breiter Bildschirm mit 1,5-facher Skalierung hat 480 CSS-Pixel.",
+          "height": "CSS-Pixel, nicht physische Pixel."
+        }
+      },
+      "reconfigure": {
+        "title": "{name} neu konfigurieren",
+        "description": "Name und Dashboard-Adresse bleiben unverändert.",
+        "data": {
+          "display_device_id": "Display-Gerät",
+          "area_id": "Bereich",
+          "profile": "Displaymodell",
+          "display_host": "Display-Adresse",
+          "weather_entity": "Wetter"
+        },
+        "data_description": {
+          "display_device_id": "Optional. Das Shelly- oder ShellyElevate-Gerät des Displays. Sein Bereich wird übernommen, wenn „Bereich“ leer bleibt. Seine Temperatur- und Feuchtigkeitssensoren werden als Raumklima angezeigt, und die Dashboard-Adresse wird an ShellyElevate übertragen.",
+          "area_id": "Der Raum, in dem das Display hängt. Seine Lichter, Rollläden und anderen Geräte werden zu den Kacheln der Startseite. Leer lassen, um den Bereich des Display-Geräts zu übernehmen.",
+          "profile": "Legt die Bildschirmgröße fest, für die das Dashboard aufgebaut wird. Für andere Bildschirme „Eigene Größe“ wählen.",
+          "display_host": "Optional. IP-Adresse oder Hostname eines ShellyElevate-Displays, das nicht in Home Assistant eingebunden ist. Darüber wird ihm die Dashboard-Adresse direkt geschickt.",
+          "weather_entity": "Optional. Erscheint in der Statusleiste oder Infospalte."
+        }
+      }
+    },
+    "error": {
+      "invalid_name": "Gib einen Namen mit mindestens einem Buchstaben oder einer Ziffer ein.",
+      "url_path_taken": "Es gibt bereits ein Dashboard oder Panel mit dieser Adresse. Wähle einen anderen Namen.",
+      "area_required": "Wähle einen Bereich oder ein Display-Gerät, dem ein Bereich zugewiesen ist."
+    },
+    "abort": {
+      "already_configured": "Ein Wanddisplay mit diesem Namen ist bereits eingerichtet.",
+      "reconfigure_successful": "Das Display wurde aktualisiert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Wanddisplay-Optionen",
+        "data": {
+          "scene_buttons": "Lieblingsszenen",
+          "role": "Rolle",
+          "pages": "Weitere Seiten",
+          "idle_seconds": "Zurück zur Startseite nach",
+          "kiosk": "Kioskmodus",
+          "pinned": "Angeheftete Kacheln",
+          "hidden": "Ausgeblendete Entitäten",
+          "show_in_sidebar": "In der Seitenleiste anzeigen"
+        },
+        "data_description": {
+          "scene_buttons": "Bis zu 2 Szenen oder Skripte, die auf der Szenen-Seite zuerst stehen.",
+          "role": "Raum zeigt Lichter, Klima, Medien und Szenen dieses Raums. Eingang zeigt zusätzlich den Status des ganzen Hauses (wer zu Hause ist, brennende Lichter, offene Türen und Fenster) und Aktionen zum Verlassen des Hauses.",
+          "pages": "Seiten neben „Home“ in der unteren Navigation.",
+          "idle_seconds": "Sekunden ohne Berührung, bis das Display zur Startseite zurückkehrt. 0 schaltet das ab.",
+          "kiosk": "Integriert blendet Kopfzeile und Seitenleiste nur auf diesem Dashboard aus. Kiosk-mode-Plugin überlässt das dem HACS-Plugin kiosk-mode. Aus zeigt die normale Home-Assistant-Oberfläche.",
+          "pinned": "Erscheinen zuerst auf der Startseite, in dieser Reihenfolge.",
+          "hidden": "Werden auf diesem Dashboard nie angezeigt.",
+          "show_in_sidebar": "Das Dashboard in der Seitenleiste von Home Assistant aufführen."
+        }
+      }
+    },
+    "error": {
+      "too_many_scene_buttons": "Wähle höchstens 2 Lieblingsszenen."
+    }
+  },
+  "selector": {
+    "profile": {
+      "options": {
+        "shelly_wall_display": "Shelly Wall Display (4\")",
+        "shelly_x1i": "Shelly Wall Display X1i",
+        "shelly_x2_landscape": "Shelly Wall Display X2 / X2i, quer",
+        "shelly_x2_portrait": "Shelly Wall Display X2 / X2i, hochkant",
+        "shelly_xl": "Shelly Wall Display XL / XLi",
+        "nspanel_pro": "Sonoff NSPanel Pro",
+        "tablet_landscape": "Tablet, quer (8–10\")",
+        "tablet_portrait": "Tablet, hochkant (8–10\")",
+        "custom": "Eigene Größe"
+      }
+    },
+    "pages": {
+      "options": {
+        "climate": "Klima",
+        "media": "Medien",
+        "scenes": "Szenen"
+      }
+    },
+    "kiosk": {
+      "options": {
+        "builtin": "Integriert",
+        "kiosk_mode": "Kiosk-mode-Plugin",
+        "off": "Aus"
+      }
+    },
+    "role": {
+      "options": {
+        "room": "Raum",
+        "entrance": "Eingang"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "viewport": {
+        "name": "Gemessene Anzeigegröße"
+      }
+    }
+  },
+  "issues": {
+    "viewport_mismatch": {
+      "title": "Displaygröße weicht vom gewählten Modell ab",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Displaygröße weicht vom gewählten Modell ab",
+            "description": "Das Dashboard für {name} ist auf {profile} ausgelegt, das Display meldet aber {measured}. Mit „Absenden“ wird es stattdessen an die gemessene Größe angepasst."
+          }
+        },
+        "abort": {
+          "entry_not_found": "Das Display existiert nicht mehr."
+        }
+      }
+    },
+    "empty_room": {
+      "title": "{name} hat nichts anzuzeigen",
+      "description": "Der Bereich {area} des Wanddisplays {name} hat keine Lichter, Abdeckungen, Klimageräte, Mediaplayer oder Szenen, die das Dashboard anzeigen kann. Die Startseite zeigt deshalb nur Uhr und Wetter. Weise dem Bereich Geräte zu oder konfiguriere das Display mit einem anderen Bereich neu."
+    }
+  }
+}

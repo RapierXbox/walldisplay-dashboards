@@ -1,0 +1,798 @@
+{
+  "title": "Kitchen",
+  "views": [
+    {
+      "type": "sections",
+      "title": "Home",
+      "path": "home",
+      "icon": "mdi:home",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Home",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Climate",
+              "icon": "mdi:thermostat",
+              "entity": "climate.kitchen_heating"
+            },
+            {
+              "path": "media",
+              "label": "Media",
+              "icon": "mdi:speaker",
+              "entity": "media_player.kitchen_speaker"
+            },
+            {
+              "path": "scenes",
+              "label": "Scenes",
+              "icon": "mdi:palette"
+            }
+          ]
+        },
+        "max_width": 320
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "clock",
+              "clock_size": "small",
+              "no_background": true,
+              "date_format": [
+                "weekday-short",
+                "day-numeric",
+                "month-short"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "weather.forecast_home",
+              "name": "Outside",
+              "state_content": [
+                "temperature"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_ceiling",
+              "name": "Ceiling",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_counter",
+              "name": "Counter",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_01",
+              "name": "Lamp 1",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_02",
+              "name": "Lamp 2",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_03",
+              "name": "Lamp 3",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_04",
+              "name": "Lamp 4",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_05",
+              "name": "Lamp 5",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_06",
+              "name": "Lamp 6",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_07",
+              "name": "Lamp 7",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "shortcut",
+              "label": "+9 more",
+              "icon": "mdi:dots-horizontal",
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "more"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sections",
+      "title": "Climate",
+      "path": "climate",
+      "icon": "mdi:thermostat",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Home",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Climate",
+              "icon": "mdi:thermostat",
+              "entity": "climate.kitchen_heating"
+            },
+            {
+              "path": "media",
+              "label": "Media",
+              "icon": "mdi:speaker",
+              "entity": "media_player.kitchen_speaker"
+            },
+            {
+              "path": "scenes",
+              "label": "Scenes",
+              "icon": "mdi:palette"
+            }
+          ]
+        },
+        "max_width": 320
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "thermostat",
+              "entity": "climate.kitchen_heating",
+              "name": "Kitchen",
+              "grid_options": {
+                "columns": 12,
+                "rows": 6,
+                "min_columns": 12,
+                "min_rows": 6
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sections",
+      "title": "Media",
+      "path": "media",
+      "icon": "mdi:speaker",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Home",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Climate",
+              "icon": "mdi:thermostat",
+              "entity": "climate.kitchen_heating"
+            },
+            {
+              "path": "media",
+              "label": "Media",
+              "icon": "mdi:speaker",
+              "entity": "media_player.kitchen_speaker"
+            },
+            {
+              "path": "scenes",
+              "label": "Scenes",
+              "icon": "mdi:palette"
+            }
+          ]
+        },
+        "max_width": 320
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "tile",
+              "entity": "media_player.kitchen_speaker",
+              "name": "Speaker",
+              "state_content": [
+                "media_title",
+                "media_artist"
+              ],
+              "features": [
+                {
+                  "type": "media-player-playback"
+                },
+                {
+                  "type": "media-player-volume-slider"
+                }
+              ],
+              "features_position": "bottom",
+              "vertical": true,
+              "grid_options": {
+                "columns": 12,
+                "rows": 4,
+                "min_columns": 12,
+                "min_rows": 4
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "media_player.kitchen_radio",
+              "name": "Radio",
+              "vertical": true,
+              "grid_options": {
+                "columns": 12,
+                "rows": 2,
+                "min_columns": 12,
+                "min_rows": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sections",
+      "title": "Scenes",
+      "path": "scenes",
+      "icon": "mdi:palette",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Home",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Climate",
+              "icon": "mdi:thermostat",
+              "entity": "climate.kitchen_heating"
+            },
+            {
+              "path": "media",
+              "label": "Media",
+              "icon": "mdi:speaker",
+              "entity": "media_player.kitchen_speaker"
+            },
+            {
+              "path": "scenes",
+              "label": "Scenes",
+              "icon": "mdi:palette"
+            }
+          ]
+        },
+        "max_width": 320
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "tile",
+              "entity": "scene.kitchen_breakfast",
+              "name": "Breakfast",
+              "icon": "mdi:coffee",
+              "vertical": true,
+              "hide_state": true,
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.kitchen_breakfast"
+                }
+              },
+              "icon_tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.kitchen_breakfast"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 2,
+                "min_columns": 6,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "scene.kitchen_cooking",
+              "name": "Cooking",
+              "icon": "mdi:pot-steam",
+              "vertical": true,
+              "hide_state": true,
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.kitchen_cooking"
+                }
+              },
+              "icon_tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.kitchen_cooking"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 2,
+                "min_columns": 6,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "scene.all_off",
+              "name": "All off",
+              "vertical": true,
+              "hide_state": true,
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.all_off"
+                }
+              },
+              "icon_tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.all_off"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 2,
+                "min_columns": 6,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "scene.away",
+              "name": "Away",
+              "vertical": true,
+              "hide_state": true,
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.away"
+                }
+              },
+              "icon_tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.away"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 2,
+                "min_columns": 6,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "scene.good_night",
+              "name": "Good night",
+              "vertical": true,
+              "hide_state": true,
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.good_night"
+                }
+              },
+              "icon_tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.good_night"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 2,
+                "min_columns": 12,
+                "min_rows": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sections",
+      "title": "More",
+      "path": "more",
+      "icon": "mdi:dots-horizontal",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Home",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Climate",
+              "icon": "mdi:thermostat",
+              "entity": "climate.kitchen_heating"
+            },
+            {
+              "path": "media",
+              "label": "Media",
+              "icon": "mdi:speaker",
+              "entity": "media_player.kitchen_speaker"
+            },
+            {
+              "path": "scenes",
+              "label": "Scenes",
+              "icon": "mdi:palette"
+            }
+          ]
+        },
+        "max_width": 320
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_08",
+              "name": "Lamp 8",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_09",
+              "name": "Lamp 9",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_10",
+              "name": "Lamp 10",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_11",
+              "name": "Lamp 11",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_12",
+              "name": "Lamp 12",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_13",
+              "name": "Lamp 13",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.kitchen_lamp_14",
+              "name": "Lamp 14",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "cover.kitchen_blinds",
+              "name": "Blinds",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "toggle"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "switch.kitchen_coffee",
+              "name": "Coffee machine",
+              "vertical": true,
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 4,
+                "rows": 2,
+                "min_columns": 4,
+                "min_rows": 2
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

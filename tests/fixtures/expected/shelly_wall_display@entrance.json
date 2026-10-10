@@ -1,0 +1,272 @@
+{
+  "title": "Hallway",
+  "views": [
+    {
+      "type": "sections",
+      "title": "Home",
+      "path": "home",
+      "icon": "mdi:home",
+      "max_columns": 1,
+      "top_margin": false,
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "clock",
+              "clock_size": "small",
+              "no_background": true,
+              "date_format": [
+                "weekday-short",
+                "day-numeric",
+                "month-short"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "weather.forecast_home",
+              "name": "Outside",
+              "state_content": [
+                "temperature"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "person.anna",
+              "name": "Anna",
+              "show_entity_picture": true,
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "person.ben",
+              "name": "Ben",
+              "show_entity_picture": true,
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "home-summary",
+              "summary": "light",
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "home-summary",
+              "summary": "security",
+              "alert_entities": [
+                {
+                  "entity": "binary_sensor.front_door"
+                },
+                {
+                  "entity": "binary_sensor.garage_door"
+                },
+                {
+                  "entity": "binary_sensor.bathroom_window"
+                },
+                {
+                  "entity": "binary_sensor.living_room_window"
+                }
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "alarm_control_panel.home_alarm",
+              "name": "Alarm",
+              "tap_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "none"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "lock.front_door",
+              "name": "Front door",
+              "tap_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "none"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "script.all_off",
+              "name": "All off",
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "script.turn_on",
+                "target": {
+                  "entity_id": "script.all_off"
+                }
+              },
+              "icon_tap_action": {
+                "action": "perform-action",
+                "perform_action": "script.turn_on",
+                "target": {
+                  "entity_id": "script.all_off"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "scene.away",
+              "name": "Away",
+              "hide_state": true,
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.away"
+                }
+              },
+              "icon_tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.away"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "scene.good_night",
+              "name": "Good night",
+              "hide_state": true,
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.good_night"
+                }
+              },
+              "icon_tap_action": {
+                "action": "perform-action",
+                "perform_action": "scene.turn_on",
+                "target": {
+                  "entity_id": "scene.good_night"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.hallway_ceiling",
+              "name": "Ceiling",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "cover.garage_door",
+              "name": "Garage door",
+              "tap_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "none"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 1,
+                "min_columns": 12,
+                "min_rows": 1
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

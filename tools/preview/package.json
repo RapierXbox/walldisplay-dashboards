@@ -1,0 +1,9 @@
+{
+  "name": "walldisplay-preview",
+  "private": true,
+  "description": "Builds the static dashboard preview and screenshots it",
+  "devDependencies": {
+    "@mdi/js": "^7.4.47",
+    "puppeteer": "^24.0.0"
+  }
+}

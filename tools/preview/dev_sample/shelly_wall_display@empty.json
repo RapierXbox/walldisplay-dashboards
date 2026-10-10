@@ -1,0 +1,56 @@
+{
+ "title": "Storage",
+ "views": [
+  {
+   "type": "sections",
+   "title": "Home",
+   "path": "home",
+   "max_columns": 1,
+   "top_margin": false,
+   "sections": [
+    {
+     "type": "grid",
+     "cards": [
+      {
+       "type": "clock",
+       "clock_size": "large",
+       "no_background": true,
+       "date_format": [
+        "weekday-long",
+        "day-numeric",
+        "month-long"
+       ],
+       "grid_options": {
+        "columns": 12,
+        "rows": 3
+       }
+      },
+      {
+       "type": "tile",
+       "entity": "weather.home",
+       "name": "Outside",
+       "state_content": [
+        "temperature",
+        "state"
+       ],
+       "grid_options": {
+        "columns": 12,
+        "rows": 1
+       }
+      },
+      {
+       "type": "weather-forecast",
+       "entity": "weather.home",
+       "show_current": false,
+       "forecast_type": "hourly",
+       "grid_options": {
+        "columns": 12,
+        "rows": 2
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

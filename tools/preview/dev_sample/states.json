@@ -1,0 +1,270 @@
+{
+ "light.kitchen_ceiling": {
+  "state": "on",
+  "attributes": {
+   "friendly_name": "Ceiling",
+   "brightness": 204,
+   "area_id": "kitchen"
+  }
+ },
+ "light.kitchen_counter": {
+  "state": "off",
+  "attributes": {
+   "friendly_name": "Counter"
+  }
+ },
+ "light.dining_pendant": {
+  "state": "on",
+  "attributes": {
+   "friendly_name": "Dining pendant",
+   "brightness": 128
+  }
+ },
+ "cover.kitchen_blind": {
+  "state": "open",
+  "attributes": {
+   "friendly_name": "Blind",
+   "current_position": 40,
+   "device_class": "blind"
+  }
+ },
+ "climate.kitchen": {
+  "state": "heat",
+  "attributes": {
+   "friendly_name": "Kitchen",
+   "hvac_action": "heating",
+   "current_temperature": 20.5,
+   "temperature": 21.5,
+   "min_temp": 7,
+   "max_temp": 30,
+   "target_temp_step": 0.5,
+   "hvac_modes": [
+    "off",
+    "heat",
+    "auto"
+   ],
+   "preset_modes": [
+    "home",
+    "away",
+    "eco",
+    "boost"
+   ],
+   "preset_mode": "home"
+  }
+ },
+ "climate.living_room": {
+  "state": "heat",
+  "attributes": {
+   "friendly_name": "Living room",
+   "hvac_action": "idle",
+   "current_temperature": 21.8,
+   "temperature": 21
+  }
+ },
+ "climate.bedroom": {
+  "state": "off",
+  "attributes": {
+   "friendly_name": "Bedroom",
+   "current_temperature": 18.2,
+   "temperature": 18
+  }
+ },
+ "climate.bathroom": {
+  "state": "heat",
+  "attributes": {
+   "friendly_name": "Bathroom",
+   "hvac_action": "heating",
+   "current_temperature": 22.0,
+   "temperature": 23
+  }
+ },
+ "climate.office": {
+  "state": "auto",
+  "attributes": {
+   "friendly_name": "Office",
+   "hvac_action": "idle",
+   "current_temperature": 20.9,
+   "temperature": 20.5
+  }
+ },
+ "media_player.kitchen_speaker": {
+  "state": "paused",
+  "attributes": {
+   "friendly_name": "Kitchen speaker",
+   "volume_level": 0.35,
+   "media_title": "Morning Jazz",
+   "media_artist": "Radio Swiss",
+   "media_duration": 240,
+   "media_position": 80
+  }
+ },
+ "media_player.living_room_tv": {
+  "state": "playing",
+  "attributes": {
+   "friendly_name": "Living room TV",
+   "volume_level": 0.6,
+   "media_title": "The News",
+   "device_class": "tv",
+   "media_duration": 3600,
+   "media_position": 1250,
+   "media_artist": "Channel One",
+   "entity_picture": "/api/media_player_proxy/x",
+   "supported_features": 152511
+  }
+ },
+ "media_player.bedroom": {
+  "state": "off",
+  "attributes": {
+   "friendly_name": "Bedroom"
+  }
+ },
+ "switch.coffee_machine": {
+  "state": "on",
+  "attributes": {
+   "friendly_name": "Coffee machine"
+  }
+ },
+ "fan.kitchen_hood": {
+  "state": "off",
+  "attributes": {
+   "friendly_name": "Hood"
+  }
+ },
+ "weather.home": {
+  "state": "partlycloudy",
+  "attributes": {
+   "friendly_name": "Home",
+   "temperature": 14.2,
+   "temperature_unit": "°C"
+  }
+ },
+ "sensor.display_temperature": {
+  "state": "21.5",
+  "attributes": {
+   "friendly_name": "Temperature",
+   "unit_of_measurement": "°C",
+   "device_class": "temperature"
+  }
+ },
+ "sensor.display_humidity": {
+  "state": "48",
+  "attributes": {
+   "friendly_name": "Humidity",
+   "unit_of_measurement": "%",
+   "device_class": "humidity"
+  }
+ },
+ "scene.kitchen_cooking": {
+  "state": "2026-10-09T18:00:00+00:00",
+  "attributes": {
+   "friendly_name": "Cooking"
+  }
+ },
+ "scene.kitchen_dinner": {
+  "state": "2026-10-09T18:00:00+00:00",
+  "attributes": {
+   "friendly_name": "Dinner"
+  }
+ },
+ "scene.living_movie": {
+  "state": "2026-10-09T18:00:00+00:00",
+  "attributes": {
+   "friendly_name": "Movie"
+  }
+ },
+ "scene.good_night": {
+  "state": "2026-10-09T18:00:00+00:00",
+  "attributes": {
+   "friendly_name": "Good night"
+  }
+ },
+ "script.leave_home": {
+  "state": "2026-10-09T18:00:00+00:00",
+  "attributes": {
+   "friendly_name": "Leave home"
+  }
+ },
+ "scene.morning": {
+  "state": "2026-10-09T18:00:00+00:00",
+  "attributes": {
+   "friendly_name": "Morning"
+  }
+ },
+ "person.anna": {
+  "state": "home",
+  "attributes": {
+   "friendly_name": "Anna",
+   "entity_picture": "/api/image/serve/anna/512x512"
+  }
+ },
+ "person.ben": {
+  "state": "not_home",
+  "attributes": {
+   "friendly_name": "Ben Keller",
+   "entity_picture": "/api/image/serve/ben/512x512"
+  }
+ },
+ "person.carla": {
+  "state": "home",
+  "attributes": {
+   "friendly_name": "Carla"
+  }
+ },
+ "lock.front_door": {
+  "state": "locked",
+  "attributes": {
+   "friendly_name": "Front door"
+  }
+ },
+ "cover.garage_door": {
+  "state": "closed",
+  "attributes": {
+   "friendly_name": "Garage",
+   "device_class": "garage"
+  }
+ },
+ "alarm_control_panel.house": {
+  "state": "armed_home",
+  "attributes": {
+   "friendly_name": "Alarm"
+  }
+ },
+ "binary_sensor.kitchen_window": {
+  "state": "on",
+  "attributes": {
+   "friendly_name": "Kitchen window",
+   "device_class": "window",
+   "area_id": "kitchen"
+  }
+ },
+ "sensor.kitchen_temperature": {
+  "state": "21.3",
+  "attributes": {
+   "friendly_name": "Kitchen temperature",
+   "device_class": "temperature",
+   "unit_of_measurement": "°C"
+  }
+ },
+ "sensor.kitchen_humidity": {
+  "state": "47",
+  "attributes": {
+   "friendly_name": "Kitchen humidity",
+   "device_class": "humidity",
+   "unit_of_measurement": "%"
+  }
+ },
+ "scene.away": {
+  "state": "2026-10-08T07:30:00+00:00",
+  "attributes": {
+   "friendly_name": "Away",
+   "icon": "mdi:home-export-outline"
+  }
+ },
+ "script.all_off": {
+  "state": "off",
+  "attributes": {
+   "friendly_name": "All off",
+   "icon": "mdi:power"
+  }
+ }
+}

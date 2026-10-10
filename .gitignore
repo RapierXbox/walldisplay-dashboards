@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+
+# Sandbox and preview output (screenshots, reports, the throwaway HA config dir)
+tools/sandbox/out/
+tools/sandbox/hacfg/
+hacfg/
+tools/preview/_*.html
+# One-off screenshot helpers with machine-specific absolute paths
+tools/sandbox/design/preview.cjs
+tools/sandbox/design/shot_review.cjs
+
+# Home Assistant config and credentials: never commit these
+.storage/
+secrets.yaml
+*.token
+token*.json
+tokens*.json
+auth*.json
+.env
+.env.*
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# throwaway design prototypes (local only)
+tools/sandbox/design/
+tools/sandbox/spacing/
+tools/sandbox/spacing2/
