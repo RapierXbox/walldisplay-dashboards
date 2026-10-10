@@ -224,6 +224,36 @@ def weather_tile(
     return card
 
 
+INDOOR_ICON = "mdi:home-thermometer-outline"
+HUMIDITY_ICON = "mdi:water-percent"
+
+
+def indoor_tile(
+    temperature: str | None, humidity: str | None, language: str, *, vertical: bool = False
+) -> Card | None:
+    """ "Indoor" tile, the twin of the weather tile: the room temperature.
+
+    A status tile with a plain icon: tap opens more-info, the icon does nothing.
+    Only the temperature (humidity is on the Climate page); without one, the
+    humidity sensor. A climate entity as the source shows its current temperature.
+    """
+    entity_id = temperature or humidity
+    if not entity_id:
+        return None
+    card = tile(
+        entity_id,
+        label(language, "indoor"),
+        icon=INDOOR_ICON if temperature else HUMIDITY_ICON,
+        tap_action=dict(MORE_INFO),
+        icon_tap_action={"action": "none"},
+    )
+    if entity_id.startswith("climate."):
+        card["state_content"] = ["current_temperature"]
+    if vertical:
+        card["vertical"] = True
+    return card
+
+
 def forecast_type(weather_features: int) -> str | None:
     """The forecast the weather entity provides, or None (then no forecast card)."""
     for bit, kind in FORECAST_TYPES:
@@ -246,23 +276,19 @@ def forecast(entity_id: str, weather_features: int) -> Card | None:
 
 
 def area_card(
-    area_id: str,
-    controls: list[str],
-    *,
-    sensor_classes: list[str] | None = None,
-    exclude_entities: list[str] | None = None,
+    area_id: str, controls: list[str], *, exclude_entities: list[str] | None = None
 ) -> Card:
-    """Native room card: name, temperature/humidity, open-window badge, master switch.
+    """Native room card: name, open-window badge, master switch.
 
-    `exclude_entities` keeps entities out of its sensor values and controls.
+    No sensor values (`sensor_classes: []`): the card averages the area's
+    sensors, which can differ from the room sensor shown by the Indoor tile
+    (U3). `exclude_entities` keeps entities out of its controls.
     """
     card: Card = {
         "type": "area",
         "area": area_id,
         "display_type": "compact",
-        "sensor_classes": (
-            list(sensor_classes) if sensor_classes is not None else ["temperature", "humidity"]
-        ),
+        "sensor_classes": [],
         "alert_classes": ["window", "door", "moisture"],
     }
     if exclude_entities:

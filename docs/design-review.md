@@ -248,3 +248,70 @@ and #8a8a8a ≈ 5.3:1 (AA). The pill inherits all of it.
    our dashboards only). *Recommended:* yes.
 2. **Area icons:** a fixable repair that writes a suggested icon to the area after the admin
    confirms, or leave HA's hatched placeholder. *Recommended:* the repair.
+
+## Pass 3: indoor row, real rooms, current state
+
+Basis: a fresh `shoot.mjs --no-behaviour` at 18:2x (all profiles, `@de`, `@night`,
+`@entrance`, `@busy`, `@noforecast`). Also the owner's real 480 × 480 panel (German, room "Ben",
+floor "OG"), the preview's `ben` variant, and a "many controls, long German names" case (the Busy
+room renamed: "Schreibtischlampe", "LED-Streifen Regal", "Wandleuchte rechts" …). Prototypes:
+`tools/sandbox/out/design3/review.html`.
+
+**Verdict on the indoor row:** yes, it reads as inconsistent. "Draußen" is a tile. "Innen" is a
+grey, background-less heading whose label floats mid-column, a different type and weight from
+everything else, and it shows "47,0 %" with a spurious decimal. Two status values that belong
+together look like two different products. The real Ben room now works: 6 big tiles, clean
+names, no display entities. Type, pill, entrance and German labels are fine. No changes there.
+
+### P0
+
+**P3-1. The indoor row becomes a tile, the twin of "Draußen".** *Fix (generator, square
+status area):* replace the `heading` card with
+`{type: tile, entity: <indoor temperature entity>, name: label("indoor"), icon:
+"mdi:home-thermometer-outline", tap_action: {action: more-info}, icon_tap_action: {action:
+none}}`, keeping the same `grid_options` (6 × 1, under the weather tile, beside the 2-row
+clock). It has a plain icon, like the weather tile (status, not pressable). If the indoor source
+is a climate entity, add `state_content: ["current_temperature"]`, plus `"current_humidity"` when
+that attribute exists. If there is only a humidity entity, use the same tile on it. A
+temperature-plus-humidity pair from separate sensors shows only the temperature on the square;
+humidity stays on Klima and on the larger layouts. *Rejected:* an `area` card named "Innen". It
+shows both values and an open-window badge, but it draws the hatched placeholder icon and
+**averages its own sensors** (20,8 °C next to the chosen sensor's 20,2 °C), which breaks U3.
+
+**P3-2. Big-tile scaling isn't active in this shoot.** XL and tablet Scenes still show 36 px
+icons and 20 px names in 300 px tiles (the `tallTileSizes` path in `walldisplay.js`, touched at
+18:19). Check it again after the performance work. Add a `shoot.mjs` assertion: tiles at least
+176 px tall without features have an icon of 56 px or more.
+
+### P1
+
+**P3-3. One indoor source on every layout.** Landscape and portrait show the room `area` card
+("Living room 20 °C", the area's own value), and the square shows "Innen" from the options'
+entity. These can disagree. *Fix:* use the P3-1 tile wherever an indoor value is shown, and give
+the area card `sensor_classes: []`, so it keeps the room name, the alert badges and the
+all-lights button. The value then shows once, from one source (U3).
+
+**P3-4. Long names on 3-up tiles.** Names of 17 characters or more ("Schreibtischlampe") are cut
+at 16 px on 480 tiles (about 133 px of text). *Fix (`walldisplay.js`, in the existing
+ResizeObserver path, after the performance work):* if a tile's name overflows, set
+`--ha-tile-info-primary-font-size: 14px` on that card. One step only, never below 14 px.
+
+**P3-5. Portrait Scenes don't fill.** `shoot.mjs` reports a 348 px gap on X2 portrait and 410 px
+on tablet portrait. Hand-off to spacing.
+
+### P2
+
+- Still open from pass 2: the night skin (P2-3), the Mode tile circle (P2-4), the area
+  placeholder icon (decision), and the blue `media-control` on XL and tablets.
+- Indoor tile at night: same surfaces as "Draußen", so no extra glare (checked).
+
+### Decisions for the product owner (pass 3)
+
+1. **Rooms with more than 6 controls on 480 × 480:** a compact 2-column list (current: 9
+   visible, nothing truncated) or 5 big tiles plus "+N weitere" (fewer per screen, and
+   "Schreibtischlampe" gets cut). *Recommended:* big tiles up to 6 controls, which covers the
+   real Ben room, and the compact list only beyond that. The *max tiles* option lets you force
+   big tiles.
+2. **Humidity on the square panel:** temperature only in the "Innen" tile (humidity on the
+   Klima page), or give up one control slot for a humidity tile. *Recommended:* temperature
+   only. It's the glance value, and the twin tiles stay aligned with the 2-row clock.

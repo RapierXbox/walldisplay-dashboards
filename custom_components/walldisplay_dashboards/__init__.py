@@ -19,12 +19,13 @@ from homeassistant.helpers.area_registry import EVENT_AREA_REGISTRY_UPDATED
 from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.device_registry import EVENT_DEVICE_REGISTRY_UPDATED
 from homeassistant.helpers.entity_registry import EVENT_ENTITY_REGISTRY_UPDATED
+from homeassistant.helpers.floor_registry import EVENT_FLOOR_REGISTRY_UPDATED
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util.hass_dict import HassKey
 
-from . import dashboards, display_link, entities, repairs
+from . import dashboards, display_link, entities, repairs, websocket
 from .const import (
     CONF_DISPLAY_DEVICE_ID,
     CONF_DISPLAY_HOST,
@@ -39,7 +40,7 @@ from .const import (
     VERSION,
 )
 from .generator.room import is_empty_room
-from .models import ViewportReport
+from .models import GeneratorInput, ViewportReport
 from .profiles import DEFAULT_PROFILE, resolve_profile
 from .websocket import async_register_commands
 
@@ -49,10 +50,14 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
-REGISTRY_DEBOUNCE_SECONDS = 2.0
+# Registry changes come in bursts (an integration adding a device, a rename in the UI).
+# Rebuilding is cheap in Python, but every lovelace_updated makes each open panel fetch
+# and re-render its whole dashboard, which takes seconds on a wall display's CPU.
+REGISTRY_DEBOUNCE_SECONDS = 5.0
 PUSH_STORE_VERSION = 1
 PUSH_STORE_KEY = f"{DOMAIN}.pushed"
 MANUFACTURER = "Wall Display Dashboards"
+_BUILD_FAILED = "failed"  # digest stand-in for a dashboard that could not be built
 
 
 @dataclass
@@ -77,6 +82,9 @@ class _DomainData:
     set_up_entries: set[str] = field(default_factory=set)
     unsub_registry: list[CALLBACK_TYPE] = field(default_factory=list)
     debouncer: Debouncer[None] | None = None
+    # Digest of the dashboard open panels were last told about, per entry (lovelace_updated
+    # only fires when a rebuild differs from it).
+    digests: dict[str, str] = field(default_factory=dict)
     registered: bool = False  # static path, frontend module and websocket commands
 
 
@@ -146,18 +154,44 @@ def _loaded_entries(hass: HomeAssistant) -> list[ConfigEntry]:
 
 
 @callback
-def _async_check_empty_room(hass: HomeAssistant, entry: ConfigEntry) -> None:
+def _async_check_empty_room(
+    hass: HomeAssistant, entry: ConfigEntry, data: GeneratorInput | None = None
+) -> None:
     """Raise (or clear) the empty-room issue: no tiles and no pages (U18)."""
     try:
-        display = entities.display_config_from_entry(hass, entry)
-        data = entities.collect_input(hass, display)
+        if data is None:
+            data = entities.collect_input(hass, entities.display_config_from_entry(hass, entry))
         empty = is_empty_room(data)
     except Exception:
         _LOGGER.exception("Could not check the room of %s", entry.title)
         return
     repairs.async_update_empty_room_issue(
-        hass, entry.entry_id, empty=empty, name=display.name, area=data.area_name
+        hass, entry.entry_id, empty=empty, name=data.display.name, area=data.area_name
     )
+
+
+@callback
+def _async_rebuild(hass: HomeAssistant, entry: ConfigEntry, *, keep: bool = True) -> bool:
+    """Rebuild one display's dashboard and check its room.
+
+    Returns True if open panels must re-render: the dashboard differs from the one
+    they were last told about, or it can't be built (they then show the error).
+    """
+    digests = _domain_data(hass).digests
+    try:
+        built = websocket.build(hass, entry, keep=keep)
+    except Exception:
+        _LOGGER.debug("Could not rebuild the dashboard of %s", entry.title, exc_info=True)
+        websocket.forget(hass, entry.entry_id)
+        _async_check_empty_room(hass, entry)
+        # Panels then show the error dashboard: tell them once, not on every update.
+        previous = digests.get(entry.entry_id)
+        digests[entry.entry_id] = _BUILD_FAILED
+        return previous != _BUILD_FAILED
+    _async_check_empty_room(hass, entry, built.data)
+    previous = digests.get(entry.entry_id)
+    digests[entry.entry_id] = built.digest
+    return previous != built.digest
 
 
 @callback
@@ -168,10 +202,10 @@ def _async_start_registry_listener(hass: HomeAssistant) -> None:
 
     @callback
     def _regenerate() -> None:
-        loaded = _loaded_entries(hass)
-        fire_lovelace_updated(hass, [entry.data[CONF_URL_PATH] for entry in loaded])
-        for entry in loaded:
-            _async_check_empty_room(hass, entry)
+        # Only displays whose dashboard actually changed: most registry updates (a
+        # device's firmware, an entity in another room) don't touch any of them.
+        changed = [entry for entry in _loaded_entries(hass) if _async_rebuild(hass, entry)]
+        fire_lovelace_updated(hass, [entry.data[CONF_URL_PATH] for entry in changed])
 
     domain.debouncer = debouncer = Debouncer(
         hass,
@@ -197,6 +231,8 @@ def _async_start_registry_listener(hass: HomeAssistant) -> None:
         hass.bus.async_listen(EVENT_AREA_REGISTRY_UPDATED, _on_registry_update),
         hass.bus.async_listen(EVENT_ENTITY_REGISTRY_UPDATED, _on_registry_update),
         hass.bus.async_listen(EVENT_DEVICE_REGISTRY_UPDATED, _on_registry_update),
+        # Floor names are dropped from tile names.
+        hass.bus.async_listen(EVENT_FLOOR_REGISTRY_UPDATED, _on_registry_update),
         hass.bus.async_listen(EVENT_CORE_CONFIG_UPDATE, _on_core_config_update),
     ]
 
@@ -269,10 +305,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: WallDisplayConfigEntry) 
     _async_start_registry_listener(hass)
     domain.set_up_entries.add(entry.entry_id)
 
+    # Open panels fetch this entry's dashboard now (setup, reload): it is the baseline
+    # for change detection.
+    domain.digests.pop(entry.entry_id, None)
+    websocket.forget(hass, entry.entry_id)
+
     # After startup, so other integrations' entities have their states.
     @callback
     def _check_room(_hass: HomeAssistant) -> None:
-        _async_check_empty_room(hass, entry)
+        _async_rebuild(hass, entry, keep=False)
 
     entry.async_on_unload(async_at_started(hass, _check_room))
 
@@ -308,6 +349,8 @@ async def async_remove_entry(hass: HomeAssistant, entry: WallDisplayConfigEntry)
     await dashboards.async_remove_dashboard(hass, entry)
     domain = _domain_data(hass)
     domain.set_up_entries.discard(entry.entry_id)
+    domain.digests.pop(entry.entry_id, None)
+    websocket.forget(hass, entry.entry_id)
     if domain.pushed is None:
         domain.pushed = await domain.push_store.async_load() or {}
     if domain.pushed.pop(entry.entry_id, None) is not None:

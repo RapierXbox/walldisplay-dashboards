@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
+import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import probatio
@@ -10,6 +14,7 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.util.hass_dict import HassKey
 
 from . import entities, generator, layout, repairs
 from .const import (
@@ -27,7 +32,7 @@ from .const import (
     WS_LIST,
     WS_REPORT_VIEWPORT,
 )
-from .models import DashboardBudget, ViewportReport
+from .models import DashboardBudget, GeneratorInput, ViewportReport
 from .sensor import signal_viewport
 
 if TYPE_CHECKING:
@@ -43,8 +48,72 @@ VIEWPORT_TOLERANCE_PX = 4
 # through the repair flow and the strings end up in state attributes.
 MAX_VIEWPORT_PX = 8192
 MAX_TEXT_LENGTH = 512
+# `list` is asked by every browser on every page load and after every lovelace_updated;
+# it serves the dashboards built last (by generate, list or a registry refresh) for
+# this long, as long as the entry's data and options are unchanged.
+CACHE_SECONDS = 60.0
+
 _SIZE = probatio.All(probatio.Coerce(int), probatio.Range(min=1, max=MAX_VIEWPORT_PX))
 _TEXT = probatio.All(str, probatio.Length(max=MAX_TEXT_LENGTH))
+
+
+@dataclass(slots=True)
+class BuiltDashboard:
+    """One display's generated dashboard, with what it was built from."""
+
+    dashboard: dict[str, Any]
+    data: GeneratorInput
+    digest: str  # identifies the dashboard's content: equal digest, nothing to re-render
+    signature: str  # the entry's data and options at build time
+    built_at: float
+    budget: DashboardBudget | None = None  # computed on the first `list`
+
+
+_CACHE: HassKey[dict[str, BuiltDashboard]] = HassKey(f"{DOMAIN}_built")
+
+
+def dashboard_digest(dashboard: dict[str, Any]) -> str:
+    """Stable hash of a dashboard config."""
+    raw = json.dumps(dashboard, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.blake2b(raw.encode(), digest_size=16).hexdigest()
+
+
+def _signature(entry: ConfigEntry) -> str:
+    return json.dumps([entry.data, entry.options], sort_keys=True, default=str)
+
+
+def build(hass: HomeAssistant, entry: ConfigEntry, *, keep: bool = True) -> BuiltDashboard:
+    """Build one display's dashboard (and keep it for `list`). Raises on failure."""
+    display = entities.display_config_from_entry(hass, entry)
+    data = entities.collect_input(hass, display)
+    dashboard = generator.build_dashboard(data)
+    built = BuiltDashboard(
+        dashboard=dashboard,
+        data=data,
+        digest=dashboard_digest(dashboard),
+        signature=_signature(entry),
+        built_at=time.monotonic(),
+    )
+    if keep:
+        hass.data.setdefault(_CACHE, {})[entry.entry_id] = built
+    return built
+
+
+def _cached(hass: HomeAssistant, entry: ConfigEntry) -> BuiltDashboard | None:
+    built = hass.data.get(_CACHE, {}).get(entry.entry_id)
+    if (
+        built is None
+        or built.signature != _signature(entry)
+        or time.monotonic() - built.built_at > CACHE_SECONDS
+    ):
+        return None
+    return built
+
+
+@callback
+def forget(hass: HomeAssistant, entry_id: str) -> None:
+    """Drop a display's built dashboard (entry reloaded or removed)."""
+    hass.data.get(_CACHE, {}).pop(entry_id, None)
 
 
 @callback
@@ -87,10 +156,9 @@ async def ws_generate(
     if (entry := _get_entry(hass, msg["entry_id"])) is None:
         _send_not_found(connection, msg)
         return
+    # Always built fresh (a few ms): a page load must never get a stale layout.
     try:
-        display = entities.display_config_from_entry(hass, entry)
-        data = entities.collect_input(hass, display)
-        dashboard = generator.build_dashboard(data)
+        dashboard = build(hass, entry).dashboard
     except Exception as err:
         _LOGGER.exception("Could not build the dashboard of %s", entry.title)
         raise HomeAssistantError(
@@ -106,18 +174,20 @@ def home_layout(hass: HomeAssistant, entry: ConfigEntry) -> DashboardBudget:
 
     Returns ``{"rows", "footer", "views": {path: {"rows", "footer"}}}`` from
     ``generator.dashboard_budget``; ``rows``/``footer`` describe Home. The
-    dashboard is built once here and handed to it.
+    dashboard built last is reused while it is fresh (``CACHE_SECONDS``),
+    else it is built here and handed to it.
     """
     display = entities.display_config_from_entry(hass, entry)
     try:
-        data = entities.collect_input(hass, display)
-        dashboard = generator.build_dashboard(data)
-        budget = generator.dashboard_budget(data, dashboard)
-        return {
-            "rows": budget["rows"],
-            "footer": budget["footer"],
-            "views": budget["views"],
-        }
+        built = _cached(hass, entry) or build(hass, entry)
+        if built.budget is None:
+            budget = generator.dashboard_budget(built.data, built.dashboard)
+            built.budget = {
+                "rows": budget["rows"],
+                "footer": budget["footer"],
+                "views": budget["views"],
+            }
+        return built.budget
     except Exception:
         _LOGGER.exception("Could not build %s; guessing its footer from the options", entry.title)
     footer = bool(entry.options.get(CONF_PAGES, DEFAULT_PAGES))

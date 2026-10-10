@@ -17,7 +17,6 @@ import sample_house
 from custom_components.walldisplay_dashboards.generator import build_dashboard
 from custom_components.walldisplay_dashboards.generator.info import ClimateInfo, LightInfo
 from custom_components.walldisplay_dashboards.generator.room import (
-    room_card_sensors,
     room_humidity,
     room_temperature,
 )
@@ -117,51 +116,17 @@ def test_room_sensor_precedence() -> None:
     assert room_humidity(chosen) == "sensor.wet"
 
 
-def test_room_card_default_unchanged() -> None:
-    """Without options the room card is HA's area card as before."""
-    card = room_card(sample(LANDSCAPE))
-    assert card["sensor_classes"] == ["temperature", "humidity"]
-    assert "exclude_entities" not in card
-
-
-def test_room_card_shows_the_room_sensor() -> None:
-    """The area's other sensors of a class are excluded so the card shows the room sensor."""
-    data = sample(
-        LANDSCAPE,
-        overrides={"temperature_entity": AREA_TEMP_2.entity_id},
-        area_sensors=(AREA_TEMP, AREA_TEMP_2, AREA_HUMIDITY),
-    )
-    card = room_card(data)
-    assert card["sensor_classes"] == ["temperature", "humidity"]
-    assert card["exclude_entities"] == [AREA_TEMP.entity_id]
-
-    # The display's own sensor, when it is one of the area's sensors, wins over the rest.
-    own = EntityInfo(sample_house.INDOOR_HUMIDITY, "Humidity", KITCHEN, "humidity")
-    classes, exclude = room_card_sensors(sample(area_sensors=(AREA_HUMIDITY, own)))
-    assert classes == ["temperature", "humidity"]
-    assert exclude == [AREA_HUMIDITY.entity_id]
-
-
-def test_room_card_drops_a_sensor_it_cannot_show() -> None:
-    """An option from another room, or one against the designated sensor, drops the class."""
-    elsewhere = sample(
-        LANDSCAPE, overrides={"temperature_entity": "sensor.living_room_temperature"}
-    )
-    assert room_card(elsewhere)["sensor_classes"] == ["humidity"]
-
-    designated = sample(
-        overrides={"humidity_entity": AREA_HUMIDITY.entity_id},
-        area_humidity="sensor.designated_humidity",
-        area_sensors=(AREA_HUMIDITY,),
-    )
-    assert room_card_sensors(designated) == (["temperature"], [])
-
-    # The option naming the designated sensor needs nothing extra.
-    same = sample(
-        overrides={"humidity_entity": "sensor.designated_humidity"},
-        area_humidity="sensor.designated_humidity",
-    )
-    assert room_card_sensors(same) == (["temperature", "humidity"], [])
+def test_room_card_shows_no_sensor_values() -> None:
+    """The area card averages its sensors; the Indoor tile has the one value (P3-3)."""
+    for data in (
+        sample(LANDSCAPE),
+        sample(LANDSCAPE, overrides={"temperature_entity": AREA_TEMP_2.entity_id}),
+        sample(LANDSCAPE, area_sensors=(AREA_TEMP, AREA_TEMP_2, AREA_HUMIDITY)),
+        sample(PORTRAIT, area_temperature="sensor.designated"),
+    ):
+        card = room_card(data)
+        assert card["sensor_classes"] == []
+        assert "exclude_entities" not in card  # no display entities in the kitchen
 
 
 def test_pill_shows_chosen_temperature() -> None:
@@ -265,7 +230,9 @@ def test_max_home_tiles(profile: Any) -> None:
     )
     limited = views(limited_data)
     slots = [c for c in cards_of(limited["home"]) if c["type"] in ("tile", "shortcut")]
-    weather = [c for c in slots if c.get("entity") == sample_house.WEATHER]
+    weather = [
+        c for c in slots if c.get("entity") == sample_house.WEATHER or c.get("name") == "Indoor"
+    ]
     entity_slots = [c for c in slots if c not in weather]
     assert len(entity_slots) == 4
     assert entity_slots[-1]["tap_action"]["navigation_path"] == "more"

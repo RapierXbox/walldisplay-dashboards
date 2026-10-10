@@ -18,6 +18,7 @@ import importlib
 import importlib.util
 import sys
 import types
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -148,6 +149,11 @@ WEATHER = "weather.forecast_home"
 WEATHER_FEATURES = 1 | 2  # daily and hourly forecasts (met.no)
 INDOOR_TEMPERATURE = "sensor.kitchen_display_temperature"
 INDOOR_HUMIDITY = "sensor.kitchen_display_humidity"
+# The display hangs in the Kitchen, so its sensors are the area's (the room card shows them).
+KITCHEN_SENSORS = (
+    EntityInfo(INDOOR_TEMPERATURE, "Display Temperature", KITCHEN, "temperature"),
+    EntityInfo(INDOOR_HUMIDITY, "Display Humidity", KITCHEN, "humidity"),
+)
 
 
 def sample_display(profile: Any, **changes: Any) -> Any:
@@ -191,6 +197,7 @@ def sample_input(
         media_players=MEDIA_PLAYERS,
         scenes=SCENES,
         area_names=dict(AREA_NAMES),
+        area_sensors=KITCHEN_SENSORS,
         language=language,
         house_scenes=HOUSE_SCENES,
         weather_features=WEATHER_FEATURES if weather_features is None else weather_features,
@@ -303,6 +310,11 @@ BEN_ENTITIES = (
     BEN_RELAY,
 )
 BEN_TEMPERATURE = _ben("sensor.ben_temperatur", "Temperatur Ben OG", "temperature")
+# Ben's room has no humidity sensor: the options take the upstairs hallway's, which the
+# room card can't show (another area), so the indoor row appears on every layout.
+BEN_HUMIDITY = EntityInfo(
+    "sensor.og_flur_luftfeuchtigkeit", "Luftfeuchtigkeit", "flur_og", "humidity"
+)
 BEN_DISPLAY_TEMPERATURE = "sensor.ben_display_temperature"
 # The upstairs hallway thermostat, chosen in the options for Ben's Climate page.
 HALLWAY_HEATING = ClimateInfo(
@@ -332,6 +344,7 @@ def ben_input(profile: Any | None = None, *, language: str = "de") -> Any:
             pinned=(BEN_RELAY.entity_id,),
             climate_entities=(HALLWAY_HEATING.entity_id,),
             temperature_entity=BEN_TEMPERATURE.entity_id,
+            humidity_entity=BEN_HUMIDITY.entity_id,
             max_home_tiles=6,
         ),
     )
@@ -352,6 +365,29 @@ def ben_input(profile: Any | None = None, *, language: str = "de") -> Any:
     )
 
 
+# Ben's room with more controls and long German names (design pass 3): 9 lights and
+# blinds, no tile limit, so Home switches from big tiles to the compact list.
+BEN_MORE = (
+    _ben("light.ben_schreibtisch", "Schreibtischlampe", cls=LightInfo, dimmable=True),
+    _ben("light.ben_regal", "LED-Streifen Regal", cls=LightInfo, dimmable=True),
+    _ben("light.ben_wand_rechts", "Wandleuchte rechts", cls=LightInfo, dimmable=False),
+    _ben(
+        "cover.ben_raffstore_sued", "Raffstore OG Ben Süd", "blind", COVER_OPEN_CLOSE_STOP_POSITION
+    ),
+)
+
+
+def many_input(profile: Any | None = None, *, language: str = "de") -> Any:
+    """Ben's display with 9 lights and blinds (long names) and no tile limit."""
+    data = ben_input(profile, language=language)
+    overrides = replace(data.display.overrides, pinned=(), max_home_tiles=0)
+    return replace(
+        data,
+        display=replace(data.display, entry_id="sample_ben_many", overrides=overrides),
+        area_entities=BEN_ENTITIES + BEN_MORE,
+    )
+
+
 # Sample variants: name -> (input builder, keyword arguments).
 VARIANTS = {
     "entrance": (entrance_input, {}),
@@ -360,6 +396,7 @@ VARIANTS = {
     "noforecast": (sample_input, {"weather_features": 0}),  # weather without forecasts
     "busy": (busy_input, {}),
     "ben": (ben_input, {}),
+    "many": (many_input, {}),
 }
 # Extra goldens: <profile>@<variant>.json
 GOLDEN_VARIANTS = (
@@ -373,6 +410,9 @@ GOLDEN_VARIANTS = (
     ("shelly_wall_display", "busy"),
     ("shelly_x2_landscape", "busy"),
     ("shelly_wall_display", "ben"),
+    ("shelly_x2_landscape", "ben"),
+    ("shelly_x2_portrait", "ben"),
+    ("shelly_wall_display", "many"),
 )
 
 
@@ -605,6 +645,36 @@ STATES.update(
                 brightness=255,
             ),
             _ben_state(BEN_ENTITIES[6], "off", "Shelly Ben Mikrofon stummschalten"),
+            _ben_state(
+                BEN_MORE[0],
+                "on",
+                "Schreibtischlampe",
+                color_mode="brightness",
+                supported_color_modes=["brightness"],
+                brightness=200,
+            ),
+            _ben_state(
+                BEN_MORE[1],
+                "off",
+                "LED-Streifen Regal",
+                color_mode=None,
+                supported_color_modes=["brightness"],
+            ),
+            _ben_state(
+                BEN_MORE[2],
+                "off",
+                "Wandleuchte rechts",
+                color_mode=None,
+                supported_color_modes=["onoff"],
+            ),
+            _ben_state(
+                BEN_MORE[3],
+                "closed",
+                "Raffstore OG Ben Süd",
+                device_class="blind",
+                current_position=0,
+                supported_features=COVER_OPEN_CLOSE_STOP_POSITION,
+            ),
             _ben_state(BEN_ENTITIES[7], "off", "Shelly Ben Nachtmodus"),
             _ben_state(BEN_RELAY, "on", "Shelly Ben Relais"),
             _ben_state(
@@ -614,6 +684,14 @@ STATES.update(
                 device_class="temperature",
                 state_class="measurement",
                 unit_of_measurement="°C",
+            ),
+            _ben_state(
+                BEN_HUMIDITY,
+                "52",
+                "Luftfeuchtigkeit Flur OG",
+                device_class="humidity",
+                state_class="measurement",
+                unit_of_measurement="%",
             ),
             (
                 BEN_DISPLAY_TEMPERATURE,

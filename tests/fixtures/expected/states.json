@@ -93,6 +93,15 @@
       "supported_features": 15
     }
   },
+  "cover.ben_raffstore_sued": {
+    "state": "closed",
+    "attributes": {
+      "friendly_name": "Raffstore OG Ben Süd",
+      "device_class": "blind",
+      "current_position": 0,
+      "supported_features": 15
+    }
+  },
   "cover.ben_raffstore_west": {
     "state": "open",
     "attributes": {
@@ -155,6 +164,37 @@
     "state": "off",
     "attributes": {
       "friendly_name": "Licht Eingang Ben OG",
+      "color_mode": null,
+      "supported_color_modes": [
+        "onoff"
+      ]
+    }
+  },
+  "light.ben_regal": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "LED-Streifen Regal",
+      "color_mode": null,
+      "supported_color_modes": [
+        "brightness"
+      ]
+    }
+  },
+  "light.ben_schreibtisch": {
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Schreibtischlampe",
+      "color_mode": "brightness",
+      "supported_color_modes": [
+        "brightness"
+      ],
+      "brightness": 200
+    }
+  },
+  "light.ben_wand_rechts": {
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Wandleuchte rechts",
       "color_mode": null,
       "supported_color_modes": [
         "onoff"
@@ -491,6 +531,15 @@
       "device_class": "temperature",
       "state_class": "measurement",
       "unit_of_measurement": "°C"
+    }
+  },
+  "sensor.og_flur_luftfeuchtigkeit": {
+    "state": "52",
+    "attributes": {
+      "friendly_name": "Luftfeuchtigkeit Flur OG",
+      "device_class": "humidity",
+      "state_class": "measurement",
+      "unit_of_measurement": "%"
     }
   },
   "switch.ben_display_mikrofon": {

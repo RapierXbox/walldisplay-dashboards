@@ -72,13 +72,22 @@
                       ]
                     },
                     {
+                      "type": "tile",
+                      "entity": "sensor.kitchen_display_temperature",
+                      "name": "Innen",
+                      "icon": "mdi:home-thermometer-outline",
+                      "tap_action": {
+                        "action": "more-info"
+                      },
+                      "icon_tap_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
                       "type": "area",
                       "area": "kitchen",
                       "display_type": "compact",
-                      "sensor_classes": [
-                        "temperature",
-                        "humidity"
-                      ],
+                      "sensor_classes": [],
                       "alert_classes": [
                         "window",
                         "door",

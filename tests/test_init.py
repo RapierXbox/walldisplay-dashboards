@@ -16,11 +16,16 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import floor_registry as fr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.walldisplay_dashboards import async_setup, display_link
+from custom_components.walldisplay_dashboards import (
+    REGISTRY_DEBOUNCE_SECONDS,
+    async_setup,
+    display_link,
+)
 from custom_components.walldisplay_dashboards.const import (
     DOMAIN,
     FRONTEND_SCRIPT,
@@ -180,24 +185,121 @@ async def test_remove_entry_deletes_dashboard(hass: HomeAssistant, push, hass_st
     assert entry.entry_id not in hass_storage[PUSH_STORE]["data"]
 
 
+def _light(hass: HomeAssistant, object_id: str, name: str, area_id: str) -> str:
+    """A registered light with a state, in an area."""
+    registry = er.async_get(hass)
+    light = registry.async_get_or_create("light", "test", object_id, suggested_object_id=object_id)
+    hass.states.async_set(light.entity_id, "off", {"friendly_name": name})
+    registry.async_update_entity(light.entity_id, area_id=area_id)
+    return light.entity_id
+
+
+class _Clock:
+    """Moves time past the registry debouncer, one cooldown per step."""
+
+    def __init__(self) -> None:
+        self.now = dt_util.utcnow()
+
+    async def step(self, hass: HomeAssistant) -> None:
+        await hass.async_block_till_done()
+        self.now += timedelta(seconds=REGISTRY_DEBOUNCE_SECONDS + 1)
+        async_fire_time_changed(hass, self.now)
+        await hass.async_block_till_done()
+
+
 async def test_registry_change_regenerates(hass: HomeAssistant, push) -> None:
-    """Registry updates fire one debounced lovelace_updated per display."""
-    entry = make_entry(hass)
+    """Registry updates fire lovelace_updated only for displays whose dashboard changed."""
+    areas = ar.async_get(hass)
+    kitchen = areas.async_create("Kitchen").id
+    hall = areas.async_create("Hall").id
+    entry = make_entry(hass, entry_data(area_id=kitchen))
     await _setup(hass, entry)
-    second = make_entry(hass, entry_data(name="Hall", url_path="wall-hall"))
+    second = make_entry(hass, entry_data(name="Hall", url_path="wall-hall", area_id=hall))
     await _setup(hass, second)
     events = []
     hass.bus.async_listen("lovelace_updated", events.append)
+    clock = _Clock()
 
-    registry = ar.async_get(hass)
-    registry.async_create("Pantry")
-    registry.async_create("Cellar")
-    await hass.async_block_till_done()
+    # Nothing either display shows.
+    areas.async_create("Pantry")
+    areas.async_create("Cellar")
+    await clock.step(hass)
     assert events == []
 
-    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=5))
-    await hass.async_block_till_done()
+    # A light in the kitchen: the kitchen display only, once for the burst.
+    _light(hass, "kitchen_ceiling", "Ceiling", kitchen)
+    _light(hass, "kitchen_counter", "Counter", kitchen)
+    await clock.step(hass)
+    await clock.step(hass)
+    assert [e.data["url_path"] for e in events] == [URL]
+
+    # Both rooms change.
+    events.clear()
+    _light(hass, "kitchen_island", "Island", kitchen)
+    _light(hass, "hall_ceiling", "Hall lamp", hall)
+    await clock.step(hass)
+    await clock.step(hass)
     assert sorted(e.data["url_path"] for e in events) == ["wall-hall", URL]
+
+
+async def test_unrelated_entity_rename_is_ignored(hass: HomeAssistant, push) -> None:
+    """Renaming an entity in another room fires nothing; one in the room fires."""
+    areas = ar.async_get(hass)
+    kitchen = areas.async_create("Kitchen").id
+    bedroom = areas.async_create("Bedroom").id
+    ceiling = _light(hass, "kitchen_ceiling", "Ceiling", kitchen)
+    bedside = _light(hass, "bedside", "Bedside", bedroom)
+    await _setup(hass, make_entry(hass, entry_data(area_id=kitchen)))
+    events = []
+    hass.bus.async_listen("lovelace_updated", events.append)
+    clock = _Clock()
+
+    registry = er.async_get(hass)
+    registry.async_update_entity(bedside, name="Reading lamp")
+    await clock.step(hass)
+    assert events == []
+
+    registry.async_update_entity(ceiling, name="Main light")
+    await clock.step(hass)
+    await clock.step(hass)
+    assert [e.data["url_path"] for e in events] == [URL]
+
+
+async def test_floor_rename_regenerates(hass: HomeAssistant, push) -> None:
+    """Floor names are dropped from tile names, so a floor rename can change the dashboard."""
+    floors = fr.async_get(hass)
+    ground = floors.async_create("Ground")
+    kitchen = ar.async_get(hass).async_create("Kitchen", floor_id=ground.floor_id).id
+    _light(hass, "ground_light", "Ground light", kitchen)
+    await _setup(hass, make_entry(hass, entry_data(area_id=kitchen)))
+    events = []
+    hass.bus.async_listen("lovelace_updated", events.append)
+
+    floors.async_update(ground.floor_id, name="Upstairs")
+    await _Clock().step(hass)
+    assert [e.data["url_path"] for e in events] == [URL]
+
+
+async def test_failed_rebuild_fires_once(hass: HomeAssistant, push) -> None:
+    """A dashboard that can't be built is announced once (panels show the error)."""
+    entry = make_entry(hass)
+    await _setup(hass, entry)
+    events = []
+    hass.bus.async_listen("lovelace_updated", events.append)
+    clock = _Clock()
+    with patch(f"{PACKAGE}.generator.build_dashboard", side_effect=RuntimeError("boom")):
+        ar.async_get(hass).async_create("Pantry")
+        await clock.step(hass)
+        assert [e.data["url_path"] for e in events] == [URL]
+        ar.async_get(hass).async_create("Cellar")
+        await clock.step(hass)
+        await clock.step(hass)
+        assert len(events) == 1
+    # Built again: the panels need the real dashboard back.
+    ar.async_get(hass).async_create("Attic")
+    await clock.step(hass)
+    await clock.step(hass)
+    assert len(events) == 2
 
 
 async def test_empty_room_issue(

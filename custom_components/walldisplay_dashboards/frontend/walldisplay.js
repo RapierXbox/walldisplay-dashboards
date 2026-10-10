@@ -6,7 +6,11 @@
  *    generate() asks the backend (websocket walldisplay_dashboards/generate) for the full
  *    dashboard config. On error it returns a one-view dashboard that explains the problem.
  * 2. Panel behaviour, only on dashboards returned by walldisplay_dashboards/list
- *    (matched by the first path segment). On every other page a tick is a few string
+ *    (matched by the first path segment). A "tick" (re)applies it in an animation frame,
+ *    driven by events: navigation, resize, a regenerated config, DOM changes of the view
+ *    (MutationObserver) and tile sizes (ResizeObserver). A watchdog re-checks every 400 ms
+ *    while the page settles and every 3 s once nothing changed (wall dashboards only,
+ *    paused while the page is hidden). On every other page a tick is a few string
  *    compares: nothing is injected or observed there, and whatever was added is removed:
  *    - scroll lock: <style id="walldisplay-lock"> in <head> while on such a dashboard
  *      (lifted while the dashboard is being edited);
@@ -23,7 +27,7 @@
  *    - viewport report: walldisplay_dashboards/report_viewport once per page load and display,
  *      only for non-admin users or inside the ShellyElevate app;
  *    - ShellyElevate (Android app) bridge: the screen-on event navigates home.
- *    The display list is re-read on lovelace_updated and every 5 minutes.
+ *    The display list is re-read on lovelace_updated (debounced) and every 5 minutes.
  * 3. Card "custom:wall-display-nav": the floating pill nav used as the sections-view footer.
  *    {type: "custom:wall-display-nav", items: [{path, label, icon, entity?}]}. The item whose path is
  *    the current view (last URL segment, dashboard root = "home") is highlighted; tapping
@@ -34,6 +38,8 @@
 
 const DOMAIN = "walldisplay_dashboards";
 const inShellyElevate = () => typeof window.ShellyElevate !== "undefined";
+// Set by the panel behaviour: re-check the page soon (a new config is being rendered).
+let kickPanel = () => {};
 
 // Client-side navigation the way HA's own navigate() does it.
 function navigate(path) {
@@ -114,12 +120,20 @@ class WallDisplayStrategy extends HTMLElement {
   // The layout is owned by the integration; "edit" offers "take control" directly.
   static noEditor = true;
 
+  // HA's default regenerates (and re-renders every card) whenever hass.entities, devices,
+  // areas or floors change anywhere in the house. The integration rebuilds in Python and
+  // fires lovelace_updated for this dashboard only when its config really changed.
+  static shouldRegenerate() {
+    return false;
+  }
+
   static async generate(config, hass) {
     if (!config || !config.entry_id) {
       return errorDashboard("This dashboard has no `entry_id`. Wall display dashboards are created by the integration; add a display there instead.");
     }
     try {
       const res = await hass.callWS({ type: `${DOMAIN}/generate`, entry_id: config.entry_id });
+      kickPanel();
       // HA's lovelace code assumes a views list; never hand it anything else.
       return Array.isArray(res?.views) ? res : errorDashboard("The integration returned no views.");
     } catch (err) {
@@ -325,28 +339,97 @@ function startPanelBehaviour() {
   const layoutHosts = new Set();
   const tallTiles = new Set();
   const sizedCard = new WeakMap(); // hui-card -> the card element last sized (hui-card builds it late)
-  const tileObserver = new ResizeObserver((entries) => entries.forEach((e) => safe(() => sizeTile(e.target))));
+  const tileBox = new WeakMap(); // hui-card -> its last size, from the ResizeObserver
+  const tileApplied = new WeakMap(); // card element -> the tall-tile sizes set on it ("" = none)
+  const tileCell = new WeakMap(); // observed box -> its hui-card
+  // hui-card and the card element are display: inline, which a ResizeObserver always reports
+  // as 0 x 0 and never again: observe the grid cell around the card instead. All sizes are
+  // read first, then the styles written, so the callback costs one layout pass at most.
+  const tileObserver = new ResizeObserver((entries) => safe(() => {
+    const cards = entries.map((e) => {
+      const hc = tileCell.get(e.target) || e.target;
+      const b = e.borderBoxSize?.[0];
+      let box = b ? { width: b.inlineSize, height: b.blockSize } : { width: e.contentRect.width, height: e.contentRect.height };
+      if (!box.width || !box.height) {
+        const r = hc.getBoundingClientRect();
+        box = { width: r.width, height: r.height };
+      }
+      tileBox.set(hc, box);
+      return hc;
+    });
+    cards.forEach((hc) => safe(() => sizeTile(hc)));
+  }));
+  // New views, sections and re-rendered dashboards: re-check in the next frame.
+  const viewObserver = new MutationObserver(() => schedule(true));
+  let observed = [];
   const first = new URLSearchParams(location.search);
   const seen = { disable: first.has("disable_km"), edit: first.get("edit") === "1" };
 
   const getHass = () => document.querySelector("home-assistant")?.hass;
-  const params = () => new URLSearchParams(location.search);
   const safe = (fn) => { try { return fn(); } catch (err) { console.debug("walldisplay:", err); } };
 
+  // ---- scheduling: at most one tick per animation frame; its layout reads happen there ----
+  let frame = 0;
+  let settle = 0; // fast watchdog checks left (reset by every trigger and every change)
+  let watchdog = 0;
+  let watchdogMs = 0;
+  const FAST_MS = 400;
+  const SLOW_MS = 3000;
+  const SETTLE_TICKS = 8; // ~3 s of fast checks after the last trigger or change
+
+  function schedule(busy = false) {
+    if (busy) settle = SETTLE_TICKS;
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      safe(tick);
+    });
+  }
+  // A new view renders a moment after the URL changes: check again shortly after.
+  function soon() {
+    settle = SETTLE_TICKS;
+    schedule();
+    [100, 300, 1000].forEach((ms) => setTimeout(() => schedule(), ms));
+    setWatchdog();
+  }
+  kickPanel = soon;
+
+  function setWatchdog() {
+    const ms = !current || document.hidden ? 0 : settle > 0 ? FAST_MS : SLOW_MS;
+    if (ms === watchdogMs) return;
+    clearInterval(watchdog);
+    watchdogMs = ms;
+    watchdog = ms ? setInterval(() => {
+      if (settle > 0) settle--;
+      schedule();
+    }, ms) : 0;
+  }
+
+  let listLoaded = false; // the display list arrived at least once this page load
+  let listRetries = 0;
   async function fetchList() {
     const hass = getHass();
     if (!hass?.connection) return;
     try {
       const res = await hass.callWS({ type: `${DOMAIN}/list` });
       displays = Array.isArray(res?.displays) ? res.displays : [];
+      listLoaded = true;
     } catch (err) {
       // Integration not loaded: no displays. Any other failure (e.g. reconnecting after a
       // restart) keeps the last list, so a panel doesn't drop kiosk and theme for 5 minutes.
       if (err?.code === "unknown_command") displays = [];
+      // Loaded while Home Assistant was still starting: try again soon, not in 5 minutes.
+      if (!listLoaded && listRetries++ < 12) setTimeout(fetchList, 10000);
     }
     lastHref = "";
-    safe(tick);
+    soon();
   }
+  // lovelace_updated comes once per changed dashboard: one /list for a burst.
+  let listTimer = 0;
+  const fetchListSoon = () => {
+    clearTimeout(listTimer);
+    listTimer = setTimeout(fetchList, 1000);
+  };
 
   function setLock(on) {
     const el = document.getElementById(LOCK_ID);
@@ -355,25 +438,31 @@ function startPanelBehaviour() {
       style.id = LOCK_ID;
       style.textContent = LOCK_CSS;
       document.head.appendChild(style);
-    } else if (!on && el) {
-      el.remove();
+      return true;
     }
+    if (!on && el) {
+      el.remove();
+      return true;
+    }
+    return false;
   }
 
   // Adds <style id> to a (shadow) root once and tracks it in `set` for removal on leave. A
   // style found already in place is tracked again (a cached view can come back).
+  // Returns true if a style was added.
   function inject(root, css, id = KIOSK_ID, set = injected) {
-    if (!root) return;
+    if (!root) return false;
     const existing = root.getElementById?.(id) || root.querySelector?.(`#${id}`);
     if (existing) {
       set.add(existing);
-      return;
+      return false;
     }
     const style = document.createElement("style");
     style.id = id;
     style.textContent = css;
     root.appendChild(style);
     set.add(style);
+    return true;
   }
 
   // Row height so that R rows end 16 px above the pill (or 12 px above the bottom without
@@ -390,34 +479,52 @@ function startPanelBehaviour() {
     set.forEach((el) => { if (!el.isConnected) set.delete(el); });
   }
 
-  function setLayout(d) {
+  function setLayout(d, r) {
     if (!d) {
-      if (!layoutStyles.size && !layoutHosts.size && !tallTiles.size) return;
+      if (!layoutStyles.size && !layoutHosts.size && !tallTiles.size) return false;
       layoutStyles.forEach((el) => el.remove());
       layoutStyles.clear();
       layoutHosts.forEach((el) => el.style.removeProperty("--wd-row-height"));
       layoutHosts.clear();
       untrackTiles();
-      return;
+      return true;
     }
     prune(layoutStyles);
     prune(layoutHosts);
-    const r = kioskRoots();
     const viewEl = r.rootRoot?.querySelector("#view");
-    inject(r.rootRoot, LAYOUT_CSS.root, LAYOUT_ID, layoutStyles);
+    let changed = inject(r.rootRoot, LAYOUT_CSS.root, LAYOUT_ID, layoutStyles);
     const sections = viewEl?.querySelector("hui-sections-view");
-    inject(sections?.shadowRoot, LAYOUT_CSS.view, LAYOUT_ID, layoutStyles);
+    changed = inject(sections?.shadowRoot, LAYOUT_CSS.view, LAYOUT_ID, layoutStyles) || changed;
+    observe([viewEl, sections?.shadowRoot]);
     if (viewEl && sections) {
       // Budget for this view from /list (views[path], then the display), else from the page.
       const parts = location.pathname.split("/").filter(Boolean);
       const v = { ...d, ...(d.views?.[parts[1] || d.home || "home"] || {}) };
-      const footer = sections.shadowRoot?.querySelector("hui-view-footer");
-      const hasFooter = typeof v.footer === "boolean" ? v.footer : !!footer && footer.getBoundingClientRect().height > 0;
+      // Layout reads are fine here: this runs in an animation frame, before the frame's own
+      // style and layout, so they cost no extra pass.
+      let hasFooter = v.footer;
+      if (typeof hasFooter !== "boolean") {
+        const footer = sections.shadowRoot?.querySelector("hui-view-footer");
+        hasFooter = !!footer && footer.getBoundingClientRect().height > 0;
+      }
       const px = `${rowHeight(v, sections.getBoundingClientRect().top, hasFooter)}px`;
-      if (viewEl.style.getPropertyValue("--wd-row-height") !== px) viewEl.style.setProperty("--wd-row-height", px);
+      if (viewEl.style.getPropertyValue("--wd-row-height") !== px) {
+        viewEl.style.setProperty("--wd-row-height", px);
+        changed = true;
+      }
       layoutHosts.add(viewEl);
-      trackTiles(sections);
+      changed = trackTiles(sections) || changed;
     }
+    return changed;
+  }
+
+  // Re-check when the view's light DOM or the sections view's shadow tree changes.
+  function observe(targets) {
+    const list = targets.filter(Boolean);
+    if (list.length === observed.length && list.every((t, i) => t === observed[i])) return;
+    viewObserver.disconnect();
+    list.forEach((t) => viewObserver.observe(t, { childList: true, subtree: true }));
+    observed = list;
   }
 
   // Top-level cards of the current view: hui-section > hui-grid-section (shadow) > hui-card.
@@ -426,12 +533,17 @@ function startPanelBehaviour() {
       .flatMap((sec) => [...(sec.querySelector("hui-grid-section")?.shadowRoot?.querySelectorAll("hui-card") || [])]);
   }
 
+  // Sizes come from the ResizeObserver; styles are written only when they change.
   function sizeTile(hc) {
     const card = hc.firstElementChild;
     if (!card || !TALL_TILE_TAGS.includes(card.localName)) return;
     sizedCard.set(hc, card);
-    const box = hc.getBoundingClientRect();
+    const box = tileBox.get(hc);
+    if (!box) return; // the observer reports it shortly
     const sizes = hc.config?.features?.length ? null : tallTileSizes(box.width, box.height);
+    const key = sizes ? `${sizes.icon}/${sizes.glyph}/${sizes.name}` : "";
+    if (tileApplied.get(card) === key) return;
+    tileApplied.set(card, key);
     if (!sizes) {
       TALL_TILE_PROPS.forEach((prop) => card.style.removeProperty(prop));
       return;
@@ -445,27 +557,42 @@ function startPanelBehaviour() {
 
   // Watch the view's tile cards; forget cards that left the DOM (view changes re-render).
   function trackTiles(sections) {
+    let changed = false;
     for (const hc of tallTiles) {
       if (!hc.isConnected) {
-        tileObserver.unobserve(hc);
+        tileObserver.unobserve(hc.__wdCell || hc);
         tallTiles.delete(hc);
       }
     }
     for (const hc of viewCards(sections)) {
       if (!tallTiles.has(hc)) {
         tallTiles.add(hc);
-        tileObserver.observe(hc);
+        // The card's own grid cell (one card per cell), else the card itself.
+        const parent = hc.parentElement;
+        const cell = parent && parent.childElementCount === 1 ? parent : hc;
+        hc.__wdCell = cell;
+        tileCell.set(cell, hc);
+        tileObserver.observe(cell);
+        changed = true;
       } else if (hc.firstElementChild && sizedCard.get(hc) !== hc.firstElementChild) {
+        // hui-card built (or rebuilt) its card element; remember it for every card type, or
+        // a clock or grid card would count as a change on every tick.
+        sizedCard.set(hc, hc.firstElementChild);
         sizeTile(hc);
+        changed = true;
       }
     }
+    return changed;
   }
 
   function untrackTiles() {
     tileObserver.disconnect();
     tallTiles.forEach((hc) => {
       const card = hc.firstElementChild;
-      if (card) TALL_TILE_PROPS.forEach((prop) => card.style.removeProperty(prop));
+      if (card) {
+        TALL_TILE_PROPS.forEach((prop) => card.style.removeProperty(prop));
+        tileApplied.delete(card);
+      }
     });
     tallTiles.clear();
   }
@@ -479,36 +606,40 @@ function startPanelBehaviour() {
     return { main, mainRoot, drawerRoot, panel, rootRoot };
   }
 
-  function setKiosk(on) {
+  function setKiosk(on, r) {
     if (!on) {
-      if (!injected.size) return;
+      if (!injected.size) return false;
       injected.forEach((el) => el.remove());
       injected.clear();
-      return;
+      return true;
     }
     prune(injected);
-    const r = kioskRoots();
-    inject(r.mainRoot, KIOSK_CSS.main);
-    inject(r.drawerRoot, KIOSK_CSS.drawer);
-    inject(r.rootRoot, KIOSK_CSS.root);
+    let changed = inject(r.mainRoot, KIOSK_CSS.main);
+    changed = inject(r.drawerRoot, KIOSK_CSS.drawer) || changed;
+    changed = inject(r.rootRoot, KIOSK_CSS.root) || changed;
     if (r.main && !r.main.__walldisplayMenuBlock) {
       r.main.__walldisplayMenuBlock = true;
       r.main.addEventListener("hass-toggle-menu", (ev) => {
         if (injected.size) ev.stopImmediatePropagation();
       }, true);
     }
+    return changed;
   }
 
   // Sticky for the page load: HA drops ?edit=1 from the URL once edit mode opens.
+  let lastSearch = null;
   function kioskSkipped() {
-    const p = params();
-    if (p.has("disable_km")) seen.disable = true;
-    if (p.get("edit") === "1") seen.edit = true;
+    if (location.search !== lastSearch) {
+      lastSearch = location.search;
+      const p = new URLSearchParams(lastSearch);
+      if (p.has("disable_km")) seen.disable = true;
+      if (p.get("edit") === "1") seen.edit = true;
+    }
     return seen.disable || (seen.edit && !!getHass()?.user?.is_admin);
   }
 
-  function editing() {
-    return !!kioskRoots().panel?.lovelace?.editMode || seen.edit;
+  function editing(r = kioskRoots()) {
+    return !!r.panel?.lovelace?.editMode || seen.edit;
   }
 
   function goHome(display) {
@@ -556,19 +687,26 @@ function startPanelBehaviour() {
   function tick() {
     const seg = location.pathname.split("/")[1];
     const d = displays.find((x) => x?.url_path === seg) || null;
+    let changed = false;
     if (location.href !== lastHref || d !== current) {
       lastHref = location.href;
       if (d && !current) lastActivity = Date.now();
       current = d;
+      changed = true;
       if (d && !reported.has(d.entry_id)) report(d);
     }
-    // Re-checked on every tick: the lovelace panel re-renders and new shadow roots appear.
+    // The shadow roots are looked up once per tick, not kept: the lovelace panel
+    // re-renders and new ones appear.
+    const r = d ? kioskRoots() : null;
     // The editor (after "take control") must scroll, so edit mode lifts the lock.
-    setLock(!!d && !editing());
+    changed = setLock(!!d && !editing(r)) || changed;
     const skipped = kioskSkipped();
-    setKiosk(!!d && d.kiosk === "builtin" && !skipped);
-    setLayout(d && !skipped ? d : null);
+    changed = setKiosk(!!d && d.kiosk === "builtin" && !skipped, r) || changed;
+    changed = setLayout(d && !skipped ? d : null, r) || changed;
+    if (!d || skipped) observe([]);
     autoDark(d && !skipped ? d : null, getHass());
+    if (changed) settle = SETTLE_TICKS;
+    setWatchdog();
   }
 
   // Auto dark (panel users only: a non-admin or the ShellyElevate app). Follows sun.sun with
@@ -582,6 +720,7 @@ function startPanelBehaviour() {
   // active: auto dark ran since the last restore (null = not evaluated yet this page load).
   const theme = { sun: null, applied: undefined, override: false, active: null };
   const started = Date.now();
+  let themeWait = 0;
   const store = (fn) => { try { return fn(window.localStorage); } catch { return null; } };
   const setTheme = (detail) => document.querySelector("home-assistant")?.dispatchEvent(
     new CustomEvent("settheme", { detail, bubbles: true, composed: true }));
@@ -596,8 +735,14 @@ function startPanelBehaviour() {
   }
 
   function autoDark(d, hass) {
+    // Before the display list is known, "not a wall dashboard" would restore the theme.
+    if (!hass || !listLoaded) return;
     // Give the synced theme preferences a moment to load after start-up.
-    if (!hass || Date.now() - started < 3000) return;
+    const wait = 3000 - (Date.now() - started);
+    if (wait > 0) {
+      if (!themeWait) themeWait = setTimeout(() => schedule(), wait + 50);
+      return;
+    }
     const panelUser = !hass.user?.is_admin || inShellyElevate();
     const sun = d && panelUser ? hass.states?.["sun.sun"]?.state : undefined;
     if (!sun) {
@@ -636,13 +781,10 @@ function startPanelBehaviour() {
   for (const type of ACTIVITY_EVENTS) {
     window.addEventListener(type, () => { lastActivity = Date.now(); }, { capture: true, passive: true });
   }
-  // A new view renders a moment after the URL changes: check again shortly after.
-  const soon = () => [0, 60, 200].forEach((ms) => setTimeout(() => safe(tick), ms));
   window.addEventListener("location-changed", soon);
   window.addEventListener("resize", soon);
   window.addEventListener("popstate", soon);
-  // 400 ms picks up re-rendered shadow roots quickly; off our dashboards a tick is cheap.
-  setInterval(() => safe(tick), 400);
+  document.addEventListener("visibilitychange", () => (document.hidden ? setWatchdog() : soon()));
   setInterval(() => safe(idleCheck), 5000);
 
   if (inShellyElevate()) {
@@ -656,7 +798,10 @@ function startPanelBehaviour() {
     if (!hass?.connection || !hass.user) return;
     clearInterval(boot);
     fetchList();
-    safe(() => hass.connection.subscribeEvents(() => fetchList(), "lovelace_updated"))?.catch?.(() => {});
+    safe(() => hass.connection.subscribeEvents(fetchListSoon, "lovelace_updated"))?.catch?.(() => {});
+    // Auto dark follows sun.sun the moment it changes (one entity, filtered server-side).
+    safe(() => hass.connection.subscribeMessage(() => schedule(),
+      { type: "subscribe_entities", entity_ids: ["sun.sun"] }))?.catch?.(() => {});
     setInterval(fetchList, 5 * 60 * 1000);
   }, 250);
 }

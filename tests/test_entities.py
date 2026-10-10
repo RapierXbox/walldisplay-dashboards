@@ -504,3 +504,58 @@ async def test_display_entities_are_not_tiles(hass: HomeAssistant) -> None:
         own["screen"],
         own["relay"],
     }
+
+
+async def test_room_sensor_precedence_feeds_the_indoor_tile(hass: HomeAssistant) -> None:
+    """Home's Indoor tile shows the room temperature: option > area registry > display > area."""
+    from custom_components.walldisplay_dashboards.generator import build_dashboard
+
+    ids = await _house(hass)
+    climate = {"device_class": "temperature", "unit_of_measurement": "°C"}
+    area_temp = _entity(
+        hass,
+        "sensor",
+        "kitchen_temp",
+        "20.1",
+        name="Kitchen Temperature",
+        area_id=ids["kitchen"],
+        attributes=climate,
+    )
+    designated = _entity(
+        hass,
+        "sensor",
+        "kitchen_wall",
+        "20.4",
+        name="Wall",
+        area_id=ids["kitchen"],
+        attributes=climate,
+    )
+    chosen = _entity(
+        hass,
+        "sensor",
+        "living_temp",
+        "19.0",
+        name="Living Temperature",
+        area_id=ids["living"],
+        attributes=climate,
+    )
+    entry = _display_entry(hass, ids)
+
+    def indoor_tile() -> list[str]:
+        dashboard = build_dashboard(collect_input(hass, display_config_from_entry(hass, entry)))
+        cards = dashboard["views"][0]["sections"][0]["cards"]
+        (tile,) = [card for card in cards if card.get("name") == "Indoor"]
+        return [tile["entity"]]
+
+    # The display device's sensors win over the area's other sensors.
+    assert indoor_tile() == [ids["temp"]]
+    ar.async_get(hass).async_update(ids["kitchen"], temperature_entity_id=designated)
+    assert indoor_tile() == [designated]
+    hass.config_entries.async_update_entry(entry, options={"temperature_entity": chosen})
+    assert indoor_tile() == [chosen]
+    # Without the display device, the first visible area sensor of the class (by name).
+    ar.async_get(hass).async_update(ids["kitchen"], temperature_entity_id=None)
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, "display_device_id": None}, options={"hidden": [ids["temp"]]}
+    )
+    assert indoor_tile() == [area_temp]

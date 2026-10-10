@@ -74,13 +74,23 @@
                       "vertical": true
                     },
                     {
+                      "type": "tile",
+                      "entity": "sensor.kitchen_display_temperature",
+                      "name": "Indoor",
+                      "icon": "mdi:home-thermometer-outline",
+                      "tap_action": {
+                        "action": "more-info"
+                      },
+                      "icon_tap_action": {
+                        "action": "none"
+                      },
+                      "vertical": true
+                    },
+                    {
                       "type": "area",
                       "area": "kitchen",
                       "display_type": "compact",
-                      "sensor_classes": [
-                        "temperature",
-                        "humidity"
-                      ],
+                      "sensor_classes": [],
                       "alert_classes": [
                         "window",
                         "door",

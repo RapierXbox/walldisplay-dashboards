@@ -253,6 +253,11 @@ body {
 .heading svg { width: 18px; height: 18px; flex: none; margin-bottom: 3px; color: var(--secondary-text-color); }
 .heading .t { font-size: var(--wd-font-heading); font-weight: 400; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .heading.subtitle .t { font-size: 14px; font-weight: 500; line-height: 20px; color: var(--secondary-text-color); }
+/* heading badges (entity badges after the title, HA: hui-heading-badge, 16 px with the wall display scale) */
+.heading .t { flex: 0 1 auto; min-width: 0; }
+.heading .badges { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; margin-left: auto; }
+.heading .hbadge { display: flex; align-items: center; gap: 3px; white-space: nowrap; font-size: 16px; line-height: 20px; color: var(--secondary-text-color); }
+.heading .hbadge svg { width: 16px; height: 16px; margin: 0; color: var(--hbadge-color, var(--state-icon-color)); }
 
 /* markdown */
 .md { padding: 16px; font-size: var(--wd-font-markdown); line-height: 1.5; overflow: hidden; }
@@ -1297,6 +1302,23 @@ body {
     if (card.icon) n.insertAdjacentHTML("beforeend", ico(card.icon));
     n.append(el("div", "t", esc(renderTemplate(card.heading ?? ""))));
     if (card.tap_action && card.tap_action.action === "navigate") { n.classList.add("tap"); n._tap = () => navigate(f, card.tap_action.navigation_path); }
+    const badges = (Array.isArray(card.badges) ? card.badges : []).filter((b) => b && (b.type || "entity") === "entity" && b.entity);
+    if (badges.length) {
+      const row = el("div", "badges");
+      for (const b of badges) {
+        const st = states[b.entity];
+        const badge = el("div", "hbadge tap");
+        if (b.show_icon !== false) {
+          badge.insertAdjacentHTML("beforeend", ico(b.icon || (st && st.attributes && st.attributes.icon) || defaultIcon(b.entity, st)));
+          badge.style.setProperty("--hbadge-color", stateColor(b.entity, st));
+        }
+        if (b.show_state !== false) badge.append(el("span", "", esc(stateText(b.entity, st))));
+        badge.title = b.entity;
+        badge._tap = () => runAction(b.tap_action || { action: "none" }, f, badge, b.entity);
+        row.append(badge);
+      }
+      n.append(row);
+    }
     return n;
   }
 

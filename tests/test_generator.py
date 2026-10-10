@@ -103,6 +103,8 @@ def known_entities(data: GeneratorInput) -> set[str]:
         display.indoor_humidity,
         data.area_temperature,
         data.area_humidity,
+        display.overrides.temperature_entity,
+        display.overrides.humidity_entity,
     )
     return set(all_entities(data)) | set(data.openings) | {x for x in extra if x}
 
@@ -313,13 +315,16 @@ def test_plans_fit_without_cutting(width: int, height: int) -> None:
 
 
 def test_square_home() -> None:
-    clock, weather, *tiles = section_cards(views_of(sample())["home"])
+    clock, weather, indoor, *tiles = section_cards(views_of(sample())["home"])
     assert clock["type"] == "clock" and clock["no_background"]
     # 228 px wide: medium (a large clock would cut the long date).
     assert clock["clock_size"] == "medium" and clock["date_format"]
+    # The right half: the weather tile above the indoor row (tests/test_indoor.py).
     assert weather["name"] == "Outside"
-    assert weather["state_content"] == ["temperature", "state"]
-    assert [c["grid_options"]["columns"] for c in (clock, weather)] == [6, 6]
+    assert weather["state_content"] == ["temperature"]
+    assert indoor["type"] == "tile" and indoor["name"] == "Indoor"
+    assert [c["grid_options"]["columns"] for c in (clock, weather, indoor)] == [6, 6, 6]
+    assert [c["grid_options"]["rows"] for c in (clock, weather, indoor)] == [2, 1, 1]
     assert clock["grid_options"]["rows"] + 4 == compute_grid(SQUARE).rows
     # Climate, media and scenes have pages, so Home keeps lights, cover and switch.
     assert [t["entity"] for t in tiles] == [
@@ -352,8 +357,9 @@ def test_landscape_info_column_is_a_grid_card() -> None:
     clock, nested = info["cards"]
     assert clock["type"] == "clock"
     assert nested["type"] == "grid" and nested["columns"] == 1
-    assert [c["type"] for c in nested["cards"]][:2] == ["tile", "area"]
-    area = nested["cards"][1]
+    assert [c["type"] for c in nested["cards"]][:3] == ["tile", "tile", "area"]
+    area = nested["cards"][2]
+    assert area["sensor_classes"] == []  # the Indoor tile has the value (P3-3)
     assert area["area"] == KITCHEN and area["display_type"] == "compact"
     assert area["features"] == [{"type": "area-controls", "controls": ["light", "cover-blind"]}]
     assert "switch" not in area["features"][0]["controls"]
@@ -361,9 +367,12 @@ def test_landscape_info_column_is_a_grid_card() -> None:
 
 def test_portrait_room_card_and_spare_rows() -> None:
     home = section_cards(views_of(sample(PORTRAIT))["home"])
-    assert [c["type"] for c in home[:3]] == ["clock", "tile", "area"]
+    assert [c["type"] for c in home[:4]] == ["clock", "tile", "tile", "area"]
     assert home[0]["clock_size"] == "medium"  # 228 px: no large clock
-    assert home[0]["grid_options"]["rows"] == home[1]["grid_options"]["rows"] <= 4
+    weather, indoor = home[1:3]
+    assert weather["name"] == "Outside" and indoor["name"] == "Indoor"
+    rows = home[0]["grid_options"]["rows"]
+    assert rows == weather["grid_options"]["rows"] + indoor["grid_options"]["rows"] <= 4
     tiles = [c for c in home if c["type"] == "tile" and c["entity"].startswith("light.")]
     assert all(t["grid_options"]["rows"] >= 4 for t in tiles)  # spare rows went to tiles
     # Tablet portrait has room left for the forecast.
@@ -373,8 +382,13 @@ def test_portrait_room_card_and_spare_rows() -> None:
 
 def test_portrait_without_forecast_follows_l2() -> None:
     home = section_cards(views_of(sample(PORTRAIT, weather_features=0))["home"])
-    clock, weather, room, *tiles = home
-    assert clock["grid_options"]["rows"] == weather["grid_options"]["rows"] <= 4
+    clock, weather, indoor, room, *tiles = home
+    assert indoor["name"] == "Indoor"
+    assert (
+        clock["grid_options"]["rows"]
+        == weather["grid_options"]["rows"] + indoor["grid_options"]["rows"]
+        <= 4
+    )
     assert room["type"] == "area" and room["grid_options"]["rows"] <= 3
     assert all(2 <= t["grid_options"]["rows"] <= 5 for t in tiles)
 

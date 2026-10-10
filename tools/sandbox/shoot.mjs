@@ -1,5 +1,6 @@
 // Screenshots + layout assertions for every profile and view, plus behaviour checks
-// for walldisplay.js (kiosk, scroll lock, idle -> home, viewport report, admin pages).
+// for walldisplay.js (kiosk, scroll lock, idle -> home, viewport report, admin pages, tall
+// tiles scaled up).
 //
 //   node shoot.mjs [--only shelly_xl] [--no-behaviour] [--no-variants]
 //
@@ -57,6 +58,16 @@ const MEASURE = `
     const smallText = scopes.flatMap((sc) => __deepAll("*", sc.shadowRoot || sc))
       .filter((e) => ownText(e) && visible(e) && parseFloat(getComputedStyle(e).fontSize) < 13.9 && !/^(AM|PM)$/i.test(e.textContent.trim()))
       .map((e) => ({ text: e.textContent.trim().slice(0, 40), size: getComputedStyle(e).fontSize }));
+    // Tall top-level tiles without features (e.g. XL/tablet Scenes): walldisplay.js scales the
+    // icon up. Cards nested in a grid card (the info column) keep HA's size.
+    const bigTiles = view ? __deepAll("hui-grid-section", view.shadowRoot)
+      .flatMap((g) => [...(g.shadowRoot?.querySelectorAll("hui-card") || [])])
+      .map((hc) => hc.firstElementChild).filter((c) => c?.localName === "hui-tile-card").map((c) => {
+      const hc = c.parentElement;
+      const icon = c.shadowRoot?.querySelector("ha-tile-icon");
+      return { entity: hc?.config?.entity, rect: r(c), features: !!hc?.config?.features?.length,
+        icon: icon ? parseFloat(getComputedStyle(icon).getPropertyValue("--tile-icon-size")) || null : null };
+    }).filter((t) => t.rect.h >= 176 && t.rect.w >= 180 && !t.features) : [];
     const haEl = document.querySelector("home-assistant");
     const dark = !!haEl?.hass?.themes?.darkMode;
     const header = __deepAll("hui-root")[0]?.shadowRoot?.querySelector(".header");
@@ -72,7 +83,7 @@ const MEASURE = `
       scrollHeight: document.scrollingElement.scrollHeight,
       scrolls: document.scrollingElement.scrollHeight > innerHeight,
       footer: footer ? r(footer) : null,
-      sections, cards, overFooter, offRight, truncated, smallText, dark,
+      sections, cards, overFooter, offRight, truncated, smallText, dark, bigTiles,
       rowHeight: parseFloat(getComputedStyle(__deepAll("hui-root")[0]?.shadowRoot?.querySelector("#view") || document.body).getPropertyValue("--wd-row-height")) || null,
       headerVisible: !!header && header.getBoundingClientRect().height > 0,
       sidebarVisible: !!shell && shell.getBoundingClientRect().width > 0,
@@ -178,6 +189,8 @@ async function shootDisplay(browser, tokens, label, d, w, h, report, fail, onlyV
     if (m.truncated.length) fail(`${tag}: truncated text ${m.truncated.map((t) => JSON.stringify(t.text)).join(", ")}`);
     if (m.smallText.length) fail(`${tag}: text under 14 px ${m.smallText.map((t) => `${JSON.stringify(t.text)} ${t.size}`).join(", ")}`);
     if (sunPin && m.dark !== (sunPin === "below_horizon")) fail(`${tag}: dark mode ${m.dark} with sun ${sunPin}`);
+    const unscaled = m.bigTiles.filter((t) => !(t.icon >= 56));
+    if (unscaled.length) fail(`${tag}: ${unscaled.length} tall tile(s) not scaled (icon ${unscaled.map((t) => `${t.icon}px in ${t.rect.w}x${t.rect.h}`).join(", ")}, expected >= 56)`);
     if (d.kiosk === "builtin" && (m.headerVisible || m.sidebarVisible)) fail(`${tag}: kiosk chrome visible`);
     if (!m.lock) fail(`${tag}: scroll lock style missing`);
     if (m.nav && m.nav.rect.w > w - 16) fail(`${tag}: nav pill ${m.nav.rect.w}px wider than screen - 16`);
@@ -212,7 +225,7 @@ async function shootDisplay(browser, tokens, label, d, w, h, report, fail, onlyV
     // Pages outside the nav (e.g. "more") highlight nothing.
     const expected = m.nav?.buttons.some((x) => x.path === v) ? v : "";
     if (m.nav && m.nav.active.join() !== expected) fail(`${tag}: nav active item "${m.nav.active.join()}" != "${expected}"`);
-    log(`${tag}: ${m.cards.length} cards, scroll ${m.scrollHeight}/${h}, row ${m.rowHeight}px, gap to pill ${m.spacing?.gapToPill ?? "-"}`);
+    log(`${tag}: ${m.cards.length} cards, scroll ${m.scrollHeight}/${h}, row ${m.rowHeight}px, gap to pill ${m.spacing?.gapToPill ?? "-"}${m.bigTiles.length ? `, ${m.bigTiles.length} tall tiles (icon ${m.bigTiles[0].icon}px)` : ""}`);
   }
   await page.close();
 }

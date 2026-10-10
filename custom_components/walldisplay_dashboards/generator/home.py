@@ -30,12 +30,12 @@ from .room import (
     NaturalKey,
     area_controls,
     home_excluded_domains,
+    indoor_sensors,
     is_display_own,
     is_entrance,
     leave_home_actions,
     natural_key,
     on_own_page,
-    room_card_sensors,
 )
 
 MAX_HOME_TILES = 12
@@ -111,28 +111,52 @@ def _clock_for(rows: int, width_px: float) -> Card:
     return cards.clock(size, cards.DATE_LONG)
 
 
-def _clock_weather(data: GeneratorInput, grid: Grid, rows: int) -> list[Card]:
-    """Clock and weather side by side (or the clock alone), `rows` tall (at most 4)."""
+def _has_indoor(data: GeneratorInput) -> bool:
+    """True when a room temperature (or humidity) is known (docs/contracts.md)."""
+    return any(indoor_sensors(data))
+
+
+def _indoor(data: GeneratorInput, *, vertical: bool = False) -> Card | None:
+    """The Indoor tile (room temperature), or None without a room sensor."""
+    return cards.indoor_tile(*indoor_sensors(data), data.language, vertical=vertical)
+
+
+def _clock_weather(
+    data: GeneratorInput, grid: Grid, rows: int, *, indoor: bool = False
+) -> list[Card]:
+    """Clock and weather side by side (or the clock alone), `rows` tall (at most 4).
+
+    With `indoor` (2+ rows), the right half stacks the weather tile above the
+    Indoor tile, its twin (the extra row of an odd height goes to the weather);
+    the clock spans all rows on the left.
+    """
     rows = min(rows, CLOCK_MAX_ROWS)
     weather = data.display.weather_entity
     total = grid.card_columns
     column_px = card_column_px(data.display.profile)
-    if not weather:
+    indoor = indoor and rows >= 2 and _has_indoor(data)
+    if not weather and not indoor:
         return [cards.sized(_clock_for(rows, span_px(total, column_px)), total, rows)]
     half = total // 2
-    return [
-        cards.sized(_clock_for(rows, span_px(half, column_px)), half, rows),
-        cards.sized(
-            cards.weather_tile(
-                weather,
-                data.language,
-                vertical=rows >= 2,
-                width_px=span_px(total - half, column_px),
-            ),
-            total - half,
-            rows,
-        ),
-    ]
+    result = [cards.sized(_clock_for(rows, span_px(half, column_px)), half, rows)]
+    indoor_rows = (rows // 2 if weather else rows) if indoor else 0
+    weather_rows = rows - indoor_rows
+    if weather:
+        result.append(
+            cards.sized(
+                cards.weather_tile(
+                    weather,
+                    data.language,
+                    vertical=weather_rows >= 2,
+                    width_px=span_px(total - half, column_px),
+                ),
+                total - half,
+                weather_rows,
+            )
+        )
+    if indoor_rows and (tile := _indoor(data, vertical=indoor_rows >= 2)) is not None:
+        result.append(cards.sized(tile, total - half, indoor_rows))
+    return result
 
 
 def _forecast(data: GeneratorInput) -> Card | None:
@@ -142,29 +166,31 @@ def _forecast(data: GeneratorInput) -> Card | None:
 
 
 def _room_card(data: GeneratorInput) -> Card | None:
-    """HA's area card, showing the room sensors; the display's own entities stay out
-    of its room controls (a screen light is not a room light)."""
+    """HA's area card: room name, alerts and room controls, no sensor values (the
+    Indoor tile has them, P3-3). The display's own entities stay out of its room
+    controls (a screen light is not a room light)."""
     if not data.display.area_id:
         return None
-    sensor_classes, exclude = room_card_sensors(data)
-    exclude += [e.entity_id for e in data.area_entities if is_display_own(data, e)]
+    exclude = [e.entity_id for e in data.area_entities if is_display_own(data, e)]
     return cards.area_card(
-        data.display.area_id,
-        area_controls(data),
-        sensor_classes=sensor_classes,
-        exclude_entities=sorted(set(exclude)),
+        data.display.area_id, area_controls(data), exclude_entities=sorted(set(exclude))
     )
 
 
 def _status_square(data: GeneratorInput, grid: Grid, rows: int) -> list[Card]:
-    """Square strip: clock + weather; spare rows bring a bigger clock and the forecast."""
+    """Square strip: clock + weather, with the Indoor tile under the weather when
+    the strip has 2+ rows (a 1-row strip stays clock + weather); spare rows bring
+    a bigger clock and the forecast."""
     forecast = _forecast(data)
     if rows <= 0:
         return []
-    if forecast is None or rows <= 2:
-        return _clock_weather(data, grid, min(rows, CLOCK_MAX_ROWS))
-    top = 1 if rows == 3 else 2
-    return _clock_weather(data, grid, top) + [cards.sized(forecast, grid.card_columns, rows - top)]
+    min_top = 2 if rows >= 2 and _has_indoor(data) else 1
+    if forecast is None or rows < min_top + 2:
+        return _clock_weather(data, grid, min(rows, CLOCK_MAX_ROWS), indoor=True)
+    top = max(min_top, 1 if rows == 3 else 2)
+    return _clock_weather(data, grid, top, indoor=True) + [
+        cards.sized(forecast, grid.card_columns, rows - top)
+    ]
 
 
 def _portrait_status_rows(data: GeneratorInput, rows: int) -> int:
@@ -184,8 +210,8 @@ def _status_portrait(
     forecast_rows: int,
     room_rows: int = 0,
 ) -> list[Card]:
-    """Clock + weather, the room card, then the forecast."""
-    result = _clock_weather(data, grid, clock_rows) if clock_rows else []
+    """Clock + weather (+ the Indoor tile), the room card, then the forecast."""
+    result = _clock_weather(data, grid, clock_rows, indoor=True) if clock_rows else []
     if room is not None:
         rows = max(room_rows, cards.area_card_rows(room))
         result.append(cards.sized(room, grid.card_columns, rows))
@@ -205,20 +231,20 @@ def info_column(data: GeneratorInput, grid: Grid, *, forecast: bool = True) -> C
     if grid.rows <= 0 or grid.info_columns <= 0:
         return None
     weather = data.display.weather_entity
-    room = _room_card(data)
+    width = span_px(grid.info_columns, card_column_px(data.display.profile))
     budget = grid.rows - 1  # the clock always gets one row
     parts: list[Card] = []
+    vertical = grid.rows >= WEATHER_VERTICAL_ROWS
+    tile_rows = 2 if vertical else 1
     if weather and budget >= 1:
-        vertical = grid.rows >= WEATHER_VERTICAL_ROWS
-        parts.append(
-            cards.weather_tile(
-                weather,
-                data.language,
-                vertical=vertical,
-                width_px=span_px(grid.info_columns, card_column_px(data.display.profile)),
-            )
-        )
-        budget -= 1 + (1 if vertical else 0)
+        parts.append(cards.weather_tile(weather, data.language, vertical=vertical, width_px=width))
+        budget -= tile_rows
+    # Under the weather: its twin, the Indoor tile (the one indoor value, P3-3).
+    indoor = _indoor(data, vertical=vertical) if budget >= tile_rows else None
+    if indoor is not None:
+        parts.append(indoor)
+        budget -= tile_rows
+    room = _room_card(data)
     if room is not None and budget >= cards.area_card_rows(room):
         parts.append(room)
         budget -= cards.area_card_rows(room)
@@ -226,7 +252,6 @@ def info_column(data: GeneratorInput, grid: Grid, *, forecast: bool = True) -> C
     if forecast_card is not None and budget >= FORECAST_MIN_SPARE:
         parts.append(forecast_card)
         budget -= 2
-    width = span_px(grid.info_columns, card_column_px(data.display.profile))
     clock = _clock_for(1 + min(2, max(0, budget)), width)
     column: list[Card] = [clock]
     if parts:

@@ -1,0 +1,280 @@
+{
+  "title": "Ben",
+  "views": [
+    {
+      "type": "sections",
+      "title": "Start",
+      "path": "home",
+      "icon": "mdi:home",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Start",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Klima",
+              "icon": "mdi:thermostat",
+              "entity": "climate.og_flur_heizung",
+              "temperature_entity": "sensor.ben_temperatur"
+            }
+          ]
+        },
+        "max_width": 168
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "clock",
+              "clock_size": "small",
+              "no_background": true,
+              "date_format": [
+                "weekday-short",
+                "day-numeric",
+                "month-short"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "weather.forecast_home",
+              "name": "Draußen",
+              "state_content": [
+                "temperature"
+              ],
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_bett",
+              "name": "Bett Licht",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_regal",
+              "name": "LED-Streifen Regal",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_licht",
+              "name": "Licht",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_licht_eingang",
+              "name": "Licht Eingang",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_schreibtisch",
+              "name": "Schreibtischlampe",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "light.ben_wand_rechts",
+              "name": "Wandleuchte rechts",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "cover.ben_raffstore_nord",
+              "name": "Raffstore Nord",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "toggle"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "cover.ben_raffstore_sued",
+              "name": "Raffstore Süd",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "toggle"
+              },
+              "grid_options": {
+                "columns": 6,
+                "rows": 1,
+                "min_columns": 6,
+                "min_rows": 1
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "cover.ben_raffstore_west",
+              "name": "Raffstore West",
+              "tap_action": {
+                "action": "toggle"
+              },
+              "hold_action": {
+                "action": "more-info"
+              },
+              "icon_tap_action": {
+                "action": "toggle"
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 1,
+                "min_columns": 12,
+                "min_rows": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sections",
+      "title": "Klima",
+      "path": "climate",
+      "icon": "mdi:thermostat",
+      "max_columns": 1,
+      "top_margin": false,
+      "footer": {
+        "card": {
+          "type": "custom:wall-display-nav",
+          "items": [
+            {
+              "path": "home",
+              "label": "Start",
+              "icon": "mdi:home"
+            },
+            {
+              "path": "climate",
+              "label": "Klima",
+              "icon": "mdi:thermostat",
+              "entity": "climate.og_flur_heizung",
+              "temperature_entity": "sensor.ben_temperatur"
+            }
+          ]
+        },
+        "max_width": 168
+      },
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 1,
+          "cards": [
+            {
+              "type": "thermostat",
+              "entity": "climate.og_flur_heizung",
+              "name": "Heizung",
+              "grid_options": {
+                "columns": 12,
+                "rows": 6,
+                "min_columns": 12,
+                "min_rows": 6
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

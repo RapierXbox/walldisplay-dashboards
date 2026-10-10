@@ -13,7 +13,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
-from custom_components.walldisplay_dashboards import entities, generator, repairs
+from custom_components.walldisplay_dashboards import entities, generator, repairs, websocket
 from custom_components.walldisplay_dashboards.const import DOMAIN
 from custom_components.walldisplay_dashboards.layout import compute_grid
 from custom_components.walldisplay_dashboards.models import DisplayConfig, Profile
@@ -206,6 +206,57 @@ async def test_list_generator_error(
     assert (shown["rows"], shown["footer"]) == (rows, False)
     assert shown["views"] == {"home": {"rows": rows, "footer": False}}
     assert "Could not build" in caplog.text
+
+
+async def test_list_reuses_built_dashboards(
+    hass: HomeAssistant, entry, hass_ws_client: WebSocketGenerator
+) -> None:
+    """list serves the dashboard built last while it is fresh and the entry unchanged."""
+    with patch(f"{PACKAGE}.generator.build_dashboard", return_value=_dashboard(footer=True)) as b:
+        await _list(hass, hass_ws_client)
+        await _list(hass, hass_ws_client)
+    b.assert_called_once()
+
+    # New options: built again.
+    hass.config_entries.async_update_entry(entry, options=entry_options(idle_seconds=5))
+    with patch(f"{PACKAGE}.generator.build_dashboard", return_value=_dashboard(footer=False)) as b:
+        displays = await _list(hass, hass_ws_client)
+    b.assert_called_once()
+    assert displays[entry.entry_id]["footer"] is False
+
+    # Too old: built again.
+    with (
+        patch(f"{PACKAGE}.websocket.CACHE_SECONDS", -1),
+        patch(f"{PACKAGE}.generator.build_dashboard", return_value=_dashboard(footer=True)) as b,
+    ):
+        displays = await _list(hass, hass_ws_client)
+    b.assert_called_once()
+    assert displays[entry.entry_id]["footer"] is True
+
+
+async def test_generate_always_builds(
+    hass: HomeAssistant, entry, hass_ws_client: WebSocketGenerator
+) -> None:
+    """generate never serves a cached dashboard; list then reuses what it built."""
+    client = await hass_ws_client(hass)
+    with patch(f"{PACKAGE}.generator.build_dashboard", return_value=_dashboard(footer=True)) as b:
+        for _ in range(2):
+            await client.send_json_auto_id(
+                {"type": f"{DOMAIN}/generate", "entry_id": entry.entry_id}
+            )
+            assert (await client.receive_json())["success"]
+        assert b.call_count == 2
+        await _list(hass, hass_ws_client)
+        assert b.call_count == 2
+
+
+def test_dashboard_digest() -> None:
+    """Equal content, equal digest, whatever the key order; any change, another digest."""
+    one = {"title": "Kitchen", "views": [{"path": "home", "cards": [{"type": "tile"}]}]}
+    two = {"views": [{"cards": [{"type": "tile"}], "path": "home"}], "title": "Kitchen"}
+    assert websocket.dashboard_digest(one) == websocket.dashboard_digest(two)
+    two["views"][0]["cards"][0]["name"] = "Ceiling"
+    assert websocket.dashboard_digest(one) != websocket.dashboard_digest(two)
 
 
 def _dashboard(footer: bool) -> dict:

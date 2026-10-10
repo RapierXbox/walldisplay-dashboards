@@ -111,7 +111,7 @@ no actions/services of its own.
 ### how it updates
 no polling, it doesnt talk to your devices. it reads ha's areas/devices/entities.
 - the dashboard gets built fresh every time it opens (page load / refresh), always from the current area
-- open dashboards rebuild by themselves ~2s after you add, move, rename, hide or delete an entity, device or area, and when you change ha's language
+- open dashboards rebuild by themselves ~5s after you add, move, rename, hide or delete an entity, device, area or floor, and when you change ha's language. only the ones whose layout actually changed: a rename in another room doesnt make the panels redraw
 - saving options, reconfigure or a repair reloads the entry: open dashboards rebuild and shellyelevate gets told to reload the page
 - states (light on, temps, whats playing) are live like on any ha dashboard
 - stuff that only changes in the state, not the registry (eg a thermostat getting new modes), shows up on the next page load

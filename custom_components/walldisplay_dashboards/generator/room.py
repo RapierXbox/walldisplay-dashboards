@@ -240,28 +240,10 @@ def room_temperature(data: GeneratorInput) -> str | None:
     return _room_sensors(data)["temperature"][0]
 
 
-def room_card_sensors(data: GeneratorInput) -> tuple[list[str], list[str]]:
-    """sensor_classes and the sensors to exclude for HA's area card (the room card).
-
-    The area card shows the area's designated sensor, else the average of the
-    area's sensors of a class. To show the room sensor instead, the area's
-    other sensors of the class are excluded. An option the card cannot show
-    (outside the area, or not the designated sensor) drops the class rather
-    than showing a different value.
-    """
-    classes: list[str] = []
-    exclude: list[str] = []
-    designated = {"temperature": data.area_temperature, "humidity": data.area_humidity}
-    for device_class, (sensor, option) in _room_sensors(data).items():
-        area = [e.entity_id for e in data.area_sensors if e.device_class == device_class]
-        if sensor is None or sensor == designated[device_class]:
-            classes.append(device_class)
-        elif designated[device_class] is None and sensor in area:
-            classes.append(device_class)
-            exclude += [entity_id for entity_id in area if entity_id != sensor]
-        elif sensor != option:
-            classes.append(device_class)  # the display's sensor outside the area: HA's value
-    return classes, exclude
+def indoor_sensors(data: GeneratorInput) -> tuple[str | None, str | None]:
+    """(temperature, humidity) of the room, by the precedence in _room_sensors."""
+    sensors = _room_sensors(data)
+    return sensors["temperature"][0], sensors["humidity"][0]
 
 
 def area_controls(data: GeneratorInput) -> list[str]:
