@@ -138,6 +138,21 @@ def display_config_from_entry(hass: HomeAssistant, entry: ConfigEntry) -> Displa
     )
 
 
+def registry_name(entry: er.RegistryEntry, device_name: str | None) -> str | None:
+    """The entity's name as Home Assistant shows it, None if the registry has none.
+
+    Since HA 2026.11 the registry keeps only the entity's own part, relative to
+    its device (`entity_name`): "" for the main entity of a device, whose
+    stored name was the device name before. HA shows the device name followed
+    by that part, so that is the name here too. Before 2026.11 `name` and
+    `original_name` held the whole name.
+    """
+    own: str | None = getattr(entry, "entity_name", None)
+    if own is None:
+        return entry.name or entry.original_name or None
+    return " ".join(part for part in (device_name, own) if part) or None
+
+
 class _Lookup:
     """Registry views shared by one collect_input() call."""
 
@@ -164,6 +179,13 @@ class _Lookup:
             return device.area_id
         return None
 
+    def device_name(self, entry: er.RegistryEntry | None) -> str | None:
+        """Name of the entity's device as the user sees it, else None."""
+        if entry is None or not entry.device_id:
+            return None
+        device = self.devices.async_get(entry.device_id)
+        return (device.name_by_user or device.name) if device else None
+
     def visible(self, entity_id: str) -> tuple[er.RegistryEntry | None, State] | None:
         """(registry entry, state) for an entity a dashboard may show, else None."""
         state = self.hass.states.get(entity_id)
@@ -185,7 +207,7 @@ class _Lookup:
         entry, state = found
         area_id = self.area_of(entry)
         raw = (
-            (entry.name or entry.original_name if entry else None)
+            (registry_name(entry, self.device_name(entry)) if entry else None)
             or state.attributes.get(ATTR_FRIENDLY_NAME)
             or split_entity_id(entity_id)[1].replace("_", " ").capitalize()
         )

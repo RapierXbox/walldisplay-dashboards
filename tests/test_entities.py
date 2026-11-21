@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -23,6 +25,7 @@ from custom_components.walldisplay_dashboards.const import DOMAIN
 from custom_components.walldisplay_dashboards.entities import (
     collect_input,
     display_config_from_entry,
+    registry_name,
 )
 
 
@@ -559,3 +562,84 @@ async def test_room_sensor_precedence_feeds_the_indoor_tile(hass: HomeAssistant)
         entry, data={**entry.data, "display_device_id": None}, options={"hidden": [ids["temp"]]}
     )
     assert indoor_tile() == [area_temp]
+
+
+@pytest.mark.parametrize(
+    ("entry", "device", "expected"),
+    [
+        # HA 2026.11+: the registry has the entity's own part, relative to the device.
+        # A cover that was named like its device was migrated to "" (main entity).
+        (
+            SimpleNamespace(name="", original_name="Position", entity_name=""),
+            "Raffstore OG Ben Nord",
+            "Raffstore OG Ben Nord",
+        ),
+        (
+            SimpleNamespace(name=None, original_name=None, entity_name=""),
+            "Raffstore OG Ben Nord",
+            "Raffstore OG Ben Nord",
+        ),
+        # "Kaffeemaschine Leistung" on the device Kaffeemaschine became "Leistung".
+        (
+            SimpleNamespace(name="Leistung", original_name=None, entity_name="Leistung"),
+            "Kaffeemaschine",
+            "Kaffeemaschine Leistung",
+        ),
+        (SimpleNamespace(name=None, original_name="Lamp", entity_name="Lamp"), None, "Lamp"),
+        (SimpleNamespace(name=None, original_name=None, entity_name=""), None, None),
+        # Before 2026.11: name and original_name are the whole name, the device is ignored.
+        (SimpleNamespace(name="Licht Ben", original_name="Light"), "Shelly", "Licht Ben"),
+        (SimpleNamespace(name=None, original_name="Light"), "Shelly", "Light"),
+        (SimpleNamespace(name="", original_name=None), "Shelly", None),
+    ],
+)
+def test_registry_name(entry: SimpleNamespace, device: str | None, expected: str | None) -> None:
+    """Covers named like their device keep that name instead of the integration's label."""
+    assert registry_name(entry, device) == expected  # type: ignore[arg-type]
+
+
+@pytest.mark.skipif(
+    not hasattr(er.RegistryEntry, "entity_name"), reason="naming of Home Assistant 2026.11"
+)
+async def test_main_entity_gets_device_name(hass: HomeAssistant) -> None:
+    """A cover that is the main entity of its device shows the device name, cleaned."""
+    floor = fr.async_get(hass).async_create("OG")
+    ben = ar.async_get(hass).async_create("Ben", floor_id=floor.floor_id).id
+    owner = MockConfigEntry(domain="test")
+    owner.add_to_hass(hass)
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=owner.entry_id,
+        identifiers={("test", "nord")},
+        name="Raffstore OG Ben Nord",
+    )
+    dr.async_get(hass).async_update_device(device.id, area_id=ben)
+    registry = er.async_get(hass)
+    main = registry.async_get_or_create(
+        "cover", "test", "nord", device_id=device.id, has_entity_name=True, original_name=None
+    )
+    registry.async_update_entity(main.entity_id, name="")  # what the migration leaves
+    hass.states.async_set(main.entity_id, "open", {"friendly_name": "Position"})
+    power = registry.async_get_or_create(
+        "switch",
+        "test",
+        "nord_power",
+        device_id=device.id,
+        has_entity_name=True,
+        original_name="Leistung",
+    )
+    hass.states.async_set(power.entity_id, "on")
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Ben",
+        data={
+            "name": "Ben",
+            "url_path": "wall-ben",
+            "area_id": ben,
+            "profile": "shelly_wall_display",
+        },
+    )
+    entry.add_to_hass(hass)
+    data = collect_input(hass, display_config_from_entry(hass, entry))
+    names = {e.entity_id: e.name for e in data.area_entities}
+    assert names == {main.entity_id: "Raffstore Nord", power.entity_id: "Raffstore Nord Leistung"}

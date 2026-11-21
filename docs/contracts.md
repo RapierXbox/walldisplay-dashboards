@@ -67,7 +67,7 @@ Room temperature and humidity (`generator.room.room_temperature` / `room_humidit
 - the Climate page side info: humidity always, temperature only when the option is set (otherwise the thermostat shows it, U3);
 - the nav pill: with the temperature option, the Climate item carries `temperature_entity` and shows that sensor's value instead of the climate's current temperature.
 
-Tile names (`names.clean_name`): the entity's own name (registry name, original name, else friendly name) without the area name and the area's floor name, as whole words anywhere and in any case; dangling separators are dropped and spaces collapsed; a name that would become empty is kept as it is.
+Tile names (`names.clean_name`): the entity's name as Home Assistant shows it (from 2026.11 the device name followed by the entity's own name, so a main entity like a cover named after its device gets the device name; before 2026.11 the registry name or original name; else the friendly name) without the area name and the area's floor name, as whole words anywhere and in any case; dangling separators are dropped and spaces collapsed; a name that would become empty is kept as it is.
 
 `unique_id` = `url_path`.
 
